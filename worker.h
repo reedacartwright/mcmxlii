@@ -15,6 +15,10 @@ union cell {
   cell() : fitness{1.0} {};
   double fitness;
   uint64_t type;
+
+  bool operator<(cell other) {
+    return fitness < other.fitness;
+  }
 };
 
 typedef std::vector<cell> pop_t;

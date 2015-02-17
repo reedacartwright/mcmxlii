@@ -81,6 +81,17 @@ void Worker::do_work(SimCHCG* caller)
         }
       }
       u += 1;
+      if(u % 10000 == 0) {
+        auto it = std::max_element(b.begin(),b.end());
+        double m = it->fitness;
+        if(m > 1e6) {
+          for(auto &aa : b) {
+            uint64_t x = aa.type;
+            aa.fitness = aa.fitness/m;
+            aa.type = (aa.type & 0xFFFFFFFFFFFFFFF0) | (x & 0xF);
+          }
+        }
+      }
     }
     {
       Glib::Threads::RWLock::WriterLock lock{lock_};
