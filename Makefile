@@ -2,7 +2,7 @@
 GLIBS=$(shell pkg-config --libs gtkmm-3.0)
 GFLAGS=$(shell pkg-config --cflags gtkmm-3.0)
 
-CXXFLAGS += -std=c++11 -g -O2 -march=native
+CXXFLAGS += -std=c++11 -g -O3 -march=native
 
 all: simchcg
 
@@ -20,3 +20,6 @@ worker.o: worker.cc worker.h xorshift64.h
 
 rexp.o: rexp.cc rexp.h
 	$(CXX) -c $(CXXFLAGS) $(GFLAGS) rexp.cc
+
+clean:
+	-rm *.o simchcg

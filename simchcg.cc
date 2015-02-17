@@ -4,9 +4,9 @@
 #include <glibmm/main.h>
 #include "simchcg.h"
 
-SimCHCG::SimCHCG() :
-  grid_width{400}, grid_height{225},
-  worker_{400,225}, worker_thread_{nullptr}
+SimCHCG::SimCHCG(int width, int height, double mu) :
+  grid_width_{width}, grid_height_{height}, mu_(mu),
+  worker_{width,height,mu}, worker_thread_{nullptr}
 {
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000/30 );
 
@@ -28,51 +28,54 @@ SimCHCG::~SimCHCG()
 
 bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
+  cr->set_antialias(Cairo::ANTIALIAS_NONE);
+
   auto allocation = get_allocation();
   const int width = allocation.get_width();
   const int height = allocation.get_height();
 
-  double w = 1.0*width/grid_width;
-  double h = 1.0*height/grid_height;
+  double w = 1.0*width/grid_width_;
+  double h = 1.0*height/grid_height_;
 
   double lwd = 2.0;
   if(w <= h) {
     // width is the limiting space
-    double size = 1.0*grid_height*width/grid_width;
+    double size = 1.0*grid_height_*width/grid_width_;
     lwd /= size;
     cr->translate(0,(height-size)/2);
     cr->scale(width,size);
   } else {
     // height is the limiting space
-    double size = 1.0*grid_width*height/grid_height;
+    double size = 1.0*grid_width_*height/grid_height_;
     lwd /= size;
     cr->translate((width-size)/2,0);
     cr->scale(size,height);
   }
+  cr->set_line_width(lwd);
   
-  double yl = 1.0/grid_height;
-  double xl = 1.0/grid_width;
+  double yl = 1.0/grid_height_;
+  double xl = 1.0/grid_width_;
 
   cr->set_source_rgba(0.0,0.0,0.0,1.0);
   cr->paint();
+  pop_t data(grid_width_*grid_height_);
 
   {
     Glib::Threads::RWLock::ReaderLock lock{worker_.lock_};
-    auto data = worker_.get_data();
-    for(int y=0;y<grid_height;++y) {
-      for(int x=0;x<grid_width;++x) {
-        int a = static_cast<int>(data[x+y*grid_width].type & 0xF);
-        cr->set_source_rgba(
-          col_set[a].red, col_set[a].blue,
-          col_set[a].green, col_set[a].alpha
-        );
-        cr->rectangle(x*xl,y*yl,xl,yl);
-        cr->fill_preserve();
-        cr->set_line_width(lwd);
-        cr->stroke();
-      }
+    data = worker_.get_data();
+  for(int y=0;y<grid_height_;++y) {
+    for(int x=0;x<grid_width_;++x) {
+      int a = static_cast<int>(data[x+y*grid_width_].type & 0xF);
+      cr->set_source_rgba(
+        col_set[a].red, col_set[a].blue,
+        col_set[a].green, col_set[a].alpha
+      );
+      cr->rectangle(x*xl,y*yl,xl,yl);
+      cr->fill_preserve();
+      cr->stroke();
     }
   }
+}
 
   return true;
 }

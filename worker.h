@@ -22,7 +22,7 @@ typedef std::vector<cell> pop_t;
 class Worker
 {
 public:
-  Worker(int width, int height);
+  Worker(int width, int height, double mu);
 
   // Thread function.
   void do_work(SimCHCG* caller);
@@ -41,6 +41,7 @@ private:
 
   int width_;
   int height_;
+  double mu_;
 
   std::unique_ptr<pop_t> pop_a_;
   std::unique_ptr<pop_t> pop_b_;
