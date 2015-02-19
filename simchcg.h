@@ -14,6 +14,10 @@ public:
 protected:
   //Override default signal handler:
   virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
+  virtual void on_realize();
+  virtual void on_unrealize();
+
+  
 
   bool on_timeout();
 

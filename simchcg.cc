@@ -2,7 +2,11 @@
 #include <algorithm>
 #include <cairomm/context.h>
 #include <glibmm/main.h>
+#include <iostream>
+
 #include "simchcg.h"
+
+#include <gdk/gdkx.h>
 
 SimCHCG::SimCHCG(int width, int height, double mu) :
   grid_width_{width}, grid_height_{height}, mu_(mu),
@@ -24,6 +28,25 @@ SimCHCG::~SimCHCG()
 {
   worker_.stop();
   worker_thread_->join();
+}
+
+void SimCHCG::on_realize() {
+  Gtk::DrawingArea::on_realize();
+  auto p = get_window();
+  auto xid = GDK_WINDOW_XID(Glib::unwrap(p));
+  std::string cmd{"/usr/bin/xdg-screensaver suspend "};
+  cmd += std::to_string(xid);
+  system(cmd.c_str());
+  std::cout << xid << std::endl;
+}
+
+void SimCHCG::on_unrealize() {
+  Gtk::DrawingArea::on_unrealize();
+  auto p = get_window();
+  auto xid = GDK_WINDOW_XID(Glib::unwrap(p));
+  std::string cmd{"/usr/bin/xdg-screensaver resume "};
+  cmd += std::to_string(xid);
+  system(cmd.c_str());
 }
 
 bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)

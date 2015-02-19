@@ -98,7 +98,7 @@ void Worker::do_work(SimCHCG* caller)
       std::swap(pop_a_,pop_b_);
       char buf[128];
       std::sprintf(buf, "%0.2fs: Generation %llu done.\n", timer.elapsed(),u);
-      std::cout << buf;
+      //std::cout << buf;
       std::cout.flush();
     }
   }
