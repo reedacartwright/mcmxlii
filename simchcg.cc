@@ -7,6 +7,7 @@
 #include "simchcg.h"
 
 #include <gdk/gdkx.h>
+#include <dbus/dbus.h>
 
 SimCHCG::SimCHCG(int width, int height, double mu) :
   grid_width_{width}, grid_height_{height}, mu_(mu),
@@ -31,22 +32,38 @@ SimCHCG::~SimCHCG()
 }
 
 void SimCHCG::on_realize() {
+  // https://dxr.mozilla.org/mozilla-central/source/widget/gtk/WakeLockListener.cpp
   Gtk::DrawingArea::on_realize();
   auto p = get_window();
-  auto xid = GDK_WINDOW_XID(Glib::unwrap(p));
-  std::string cmd{"/usr/bin/xdg-screensaver suspend "};
-  cmd += std::to_string(xid);
-  system(cmd.c_str());
-  std::cout << xid << std::endl;
+  uint32_t xid = GDK_WINDOW_XID(Glib::unwrap(p));
+  
+  DBusConnection* connection = dbus_bus_get(DBUS_BUS_SESSION, nullptr);
+  if(connection == nullptr)
+    return;
+
+  DBusMessage* message = dbus_message_new_method_call(
+    "org.gnome.SessionManager", "/org/gnome/SessionManager",
+    "org.gnome.SessionManager", "Inhibit");
+  if(message == nullptr)
+    return;
+
+  const uint32_t flags = (1 << 3); // Inhibit idle
+  const char *app = "SimCHCG";
+  const char *topic = "Fullscreen Mode";
+
+  dbus_message_append_args(message,
+    DBUS_TYPE_STRING, &app,   DBUS_TYPE_UINT32, &xid,
+    DBUS_TYPE_STRING, &topic, DBUS_TYPE_UINT32, &flags,
+    DBUS_TYPE_INVALID );
+
+  dbus_connection_send(connection, message, nullptr);
+  dbus_connection_flush(connection);
+  dbus_message_unref(message);
+  dbus_connection_unref(connection);
 }
 
 void SimCHCG::on_unrealize() {
   Gtk::DrawingArea::on_unrealize();
-  auto p = get_window();
-  auto xid = GDK_WINDOW_XID(Glib::unwrap(p));
-  std::string cmd{"/usr/bin/xdg-screensaver resume "};
-  cmd += std::to_string(xid);
-  system(cmd.c_str());
 }
 
 bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
