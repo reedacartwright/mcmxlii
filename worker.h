@@ -32,6 +32,7 @@ public:
   void do_work(SimCHCG* caller);
 
   const pop_t& get_data() const;
+  unsigned long long get_gen() const { return gen_; }
 
   void stop();
 
@@ -46,6 +47,7 @@ private:
   int width_;
   int height_;
   double mu_;
+  unsigned long long gen_;
 
   std::unique_ptr<pop_t> pop_a_;
   std::unique_ptr<pop_t> pop_b_;

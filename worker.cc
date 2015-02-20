@@ -40,7 +40,7 @@ void Worker::do_work(SimCHCG* caller)
   static_assert(num_alleles <= 16, "Too many colors.");
   // Simulate a long calculation.
   go = true;
-  unsigned long long u = 0;
+  gen_ = 0;
   Glib::Timer timer;
   while(go) {
     {
@@ -80,8 +80,7 @@ void Worker::do_work(SimCHCG* caller)
               (((b[x+y*width_].type & 0xF) + r % (num_alleles-1)) % num_alleles);
         }
       }
-      u += 1;
-      if(u % 10000 == 0) {
+      if((1+gen_) % 10000 == 0) {
         auto it = std::max_element(b.begin(),b.end());
         double m = it->fitness;
         if(m > 1e6) {
@@ -95,10 +94,11 @@ void Worker::do_work(SimCHCG* caller)
     }
     {
       Glib::Threads::RWLock::WriterLock lock{lock_};
+      gen_ += 1;
       std::swap(pop_a_,pop_b_);
       char buf[128];
-      std::sprintf(buf, "%0.2fs: Generation %llu done.\n", timer.elapsed(),u);
-      //std::cout << buf;
+      std::sprintf(buf, "%0.2fs: Generation %llu done.\n", timer.elapsed(),gen_);
+      std::cout << buf;
       std::cout.flush();
     }
   }
