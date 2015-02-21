@@ -28,9 +28,9 @@ int main(int argc, char** argv)
       sigc::bind(sigc::ptr_fun(on_cmd), app), false);
 
    Gtk::Window win;
-   win.set_title("CHCG Demo");
+   win.set_title("Center for Human and Comparative Genomics");
    win.set_default_size(600,600);
-   win.fullscreen();
+   //win.fullscreen();
    win.add_events(Gdk::KEY_PRESS_MASK);
    win.signal_key_press_event().connect(
    	sigc::bind(sigc::ptr_fun(&on_key), &win),false);

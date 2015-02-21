@@ -110,8 +110,8 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
           col_set[a].green, col_set[a].alpha
         );
         cr->rectangle(x,y,1.0,1.0);
-        cr->fill_preserve();
-        cr->stroke();
+        //cr->stoke_preserve();
+        cr->fill();
       }
     }
     double west = grid_width_;
@@ -120,7 +120,7 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     cr->restore();
     cr->set_source_rgba(1.0,1.0,1.0,0.9);
     Pango::FontDescription font;
-    //font.set_family("Source Sans Pro");
+    font.set_family("Source Sans Pro");
     font.set_weight(Pango::WEIGHT_BOLD);
 	font.set_size(20*PANGO_SCALE);
 
