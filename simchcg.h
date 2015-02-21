@@ -17,13 +17,13 @@ protected:
   virtual void on_realize();
   virtual void on_unrealize();
 
-  
-
   bool on_timeout();
 
   int grid_width_;
   int grid_height_;
   double mu_;
+
+  Glib::RefPtr<Gdk::Pixbuf> logo_;
 
   Worker worker_;
   Glib::Threads::Thread* worker_thread_;

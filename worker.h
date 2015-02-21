@@ -34,13 +34,17 @@ public:
   const pop_t& get_data() const;
   unsigned long long get_gen() const { return gen_; }
 
+  void swap_buffers();
+
   void stop();
 
   // Synchronizes access to member data.
-  mutable Glib::Threads::RWLock lock_;
+  mutable Glib::Threads::Cond sync_;
+  mutable Glib::Threads::Mutex mutex_;
 
 private:
- 
+  Glib::Timer timer_;
+
   // Data used by both GUI thread and worker thread.
   std::atomic<bool> go;
 

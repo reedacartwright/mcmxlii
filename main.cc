@@ -27,9 +27,10 @@ int main(int argc, char** argv)
     app->signal_command_line().connect(
       sigc::bind(sigc::ptr_fun(on_cmd), app), false);
 
-   Gtk::Window win;
+   Gtk::Window win{};
    win.set_title("Center for Human and Comparative Genomics");
-   win.set_default_size(600,600);
+   win.set_default_size(1920,1080);
+   win.set_border_width(0);
    win.fullscreen();
 
    win.add_events(Gdk::KEY_PRESS_MASK);
