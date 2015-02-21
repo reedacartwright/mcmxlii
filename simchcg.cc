@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cairomm/context.h>
 #include <glibmm/main.h>
+#include <gdkmm/cursor.h>
 #include <iostream>
 
 #include "simchcg.h"
@@ -35,6 +36,10 @@ void SimCHCG::on_realize() {
   // https://dxr.mozilla.org/mozilla-central/source/widget/gtk/WakeLockListener.cpp
   Gtk::DrawingArea::on_realize();
   auto p = get_window();
+  auto cursor = Gdk::Cursor::create(Gdk::BLANK_CURSOR);
+  p->set_cursor(cursor);
+
+
   uint32_t xid = GDK_WINDOW_XID(Glib::unwrap(p));
   
   DBusConnection* connection = dbus_bus_get(DBUS_BUS_SESSION, nullptr);
