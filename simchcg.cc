@@ -77,25 +77,23 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   double w = 1.0*width/grid_width_;
   double h = 1.0*height/grid_height_;
 
-  double lwd = 2.0;
+  double lwd = 1.0;
+  double cell_size = 1.0;
+  cr->save();
   if(w <= h) {
     // width is the limiting space
     double size = 1.0*grid_height_*width/grid_width_;
-    lwd /= size;
     cr->translate(0,(height-size)/2);
-    cr->scale(width,size);
+    cr->scale(w,w);
+    lwd /= w;
   } else {
     // height is the limiting space
     double size = 1.0*grid_width_*height/grid_height_;
-    lwd /= size;
     cr->translate((width-size)/2,0);
-    cr->scale(size,height);
+    cr->scale(h,h);
+    lwd /= h;
   }
   cr->set_line_width(lwd);
-  
-  double yl = 1.0/grid_height_;
-  double xl = 1.0/grid_width_;
-
   cr->set_source_rgba(0.0,0.0,0.0,1.0);
   cr->paint();
   pop_t data(grid_width_*grid_height_);
@@ -103,19 +101,51 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   {
     Glib::Threads::RWLock::ReaderLock lock{worker_.lock_};
     data = worker_.get_data();
-  for(int y=0;y<grid_height_;++y) {
-    for(int x=0;x<grid_width_;++x) {
-      int a = static_cast<int>(data[x+y*grid_width_].type & 0xF);
-      cr->set_source_rgba(
-        col_set[a].red, col_set[a].blue,
-        col_set[a].green, col_set[a].alpha
-      );
-      cr->rectangle(x*xl,y*yl,xl,yl);
-      cr->fill_preserve();
-      cr->stroke();
+    unsigned long long gen = worker_.get_gen();
+    for(int y=0;y<grid_height_;++y) {
+      for(int x=0;x<grid_width_;++x) {
+        int a = static_cast<int>(data[x+y*grid_width_].type & 0xF);
+        cr->set_source_rgba(
+          col_set[a].red, col_set[a].blue,
+          col_set[a].green, col_set[a].alpha
+        );
+        cr->rectangle(x,y,1.0,1.0);
+        cr->fill_preserve();
+        cr->stroke();
+      }
     }
+    double west = grid_width_;
+    double south = grid_height_;
+    cr->user_to_device(west,south);
+    cr->restore();
+    cr->set_source_rgba(1.0,1.0,1.0,0.9);
+    Pango::FontDescription font;
+    //font.set_family("Source Sans Pro");
+    font.set_weight(Pango::WEIGHT_BOLD);
+	font.set_size(20*PANGO_SCALE);
+
+    char msg[128];
+    sprintf(msg,"Generation: %llu", gen);
+    auto layout = create_pango_layout(msg);
+    layout->set_font_description(font);
+    int text_width, text_height;
+    layout->get_pixel_size(text_width,text_height);
+    cr->move_to(west-text_width-10,south-text_height-10);
+    layout->show_in_cairo_context(cr);
+
+	font.set_family("TeX Gyre Adventor");
+    font.set_size(48*PANGO_SCALE);
+    layout->set_font_description(font);
+    layout->set_alignment(Pango::ALIGN_CENTER);
+    layout->set_text("Center for Human and Comparative Genomics");
+    	//"The Biodesign Institute at Arizona State University");
+    layout->get_pixel_size(text_width,text_height);  
+    cr->move_to(width/2.0-text_width/2.0,height/2.0-text_height/2.0);
+
+    layout->show_in_cairo_context(cr);
+
+
   }
-}
 
   return true;
 }
