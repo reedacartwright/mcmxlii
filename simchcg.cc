@@ -126,15 +126,42 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   cr->user_to_device(west,south);
   cr->restore();
 
+  int logo_top = height;
+  if(logo_) {
+    logo_top = height-logo_->get_height()-10;
+    Gdk::Cairo::set_source_pixbuf(cr, logo_, 10, logo_top);
+    cr->paint_with_alpha(0.9);
+  }
+
   Pango::FontDescription font;
-  font.set_family("Source Sans Pro");
   font.set_weight(Pango::WEIGHT_BOLD);
-  font.set_size(20*PANGO_SCALE);
+
+  auto layout = create_pango_layout("Center for Human and Comparative Genomics");
+  int text_width, text_height;
+
+  font.set_family("TeX Gyre Adventor");
+  font.set_size(48*PANGO_SCALE);
+  layout->set_font_description(font);
+  layout->set_alignment(Pango::ALIGN_CENTER);
+  layout->get_pixel_size(text_width,text_height);  
+  cr->move_to(width/2.0-text_width/2.0, logo_top/2.0-text_height/2.0);
+  layout->add_to_cairo_context(cr);
+  cr->set_source_rgba(1.0,1.0,1.0,0.9);
+  cr->fill();
+  // NOTE: If you want to add an outline, uncomment these lines and comment the line above.
+  //cr->fill_preserve();
+  //cr->set_source_rgba(0.0,0.0,0.0,0.2);
+  //cr->set_line_width(0.5);
+  //cr->stroke();
+
   char msg[128];
   sprintf(msg,"Generation: %llu", gen);
-  auto layout = create_pango_layout(msg);
+
+  font.set_family("Source Sans Pro");
+  font.set_size(20*PANGO_SCALE);
   layout->set_font_description(font);
-  int text_width, text_height;
+
+  layout->set_text(msg);
   layout->get_pixel_size(text_width,text_height);
   cr->move_to(west-text_width-15,south-text_height-10);
   layout->add_to_cairo_context(cr);
@@ -145,27 +172,6 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   //cr->set_source_rgba(0.0,0.0,0.0,0.2);
   //cr->set_line_width(1.0);
   //cr->stroke();
-
-  font.set_family("TeX Gyre Adventor");
-  font.set_size(48*PANGO_SCALE);
-  layout->set_font_description(font);
-  layout->set_alignment(Pango::ALIGN_CENTER);
-  layout->set_text("Center for Human and Comparative Genomics");
-  layout->get_pixel_size(text_width,text_height);  
-  cr->move_to(width/2.0-text_width/2.0,height/2.0-text_height/2.0);
-  layout->add_to_cairo_context(cr);
-  cr->set_source_rgba(1.0,1.0,1.0,0.9);
-  cr->fill();
-  // NOTE: If you want to add an outline, uncomment these lines and comment the line above.
-  //cr->fill_preserve();
-  //cr->set_source_rgba(0.0,0.0,0.0,0.2);
-  //cr->set_line_width(0.5);
-  //cr->stroke();
-
-  if(logo_) {
-    Gdk::Cairo::set_source_pixbuf(cr, logo_, 10, height-logo_->get_height()-10);
-    cr->paint_with_alpha(0.9);
-  }
 
   Glib::Threads::Mutex::Lock lock{worker_.mutex_};
   worker_.swap_buffers();
