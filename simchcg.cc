@@ -121,15 +121,16 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
       cr->fill();
     }
   }
-  double west = grid_width_;
-  double south = grid_height_;
+  double east = 0, north = 0, west = grid_width_, south = grid_height_;
   cr->user_to_device(west,south);
+  cr->user_to_device(east,north);
   cr->restore();
 
-  int logo_top = height;
+  int logo_top = south, logo_mid = south;
   if(logo_) {
-    logo_top = height-logo_->get_height()-10;
-    Gdk::Cairo::set_source_pixbuf(cr, logo_, 10, logo_top);
+    logo_top = south-logo_->get_height()-0.025*(south-north);
+    //logo_mid = south-logo_->get_height()/2;
+    Gdk::Cairo::set_source_pixbuf(cr, logo_, east+0.025*(west-east), logo_top);
     cr->paint_with_alpha(0.9);
   }
 
@@ -144,7 +145,7 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   layout->set_font_description(font);
   layout->set_alignment(Pango::ALIGN_CENTER);
   layout->get_pixel_size(text_width,text_height);  
-  cr->move_to(width/2.0-text_width/2.0, logo_top/2.0-text_height/2.0);
+  cr->move_to(east+(west-east)/2.0-text_width/2.0, north+(logo_top-north)/2.0-text_height/2.0);
   layout->add_to_cairo_context(cr);
   cr->set_source_rgba(1.0,1.0,1.0,0.9);
   cr->fill();
@@ -163,7 +164,9 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 
   layout->set_text(msg);
   layout->get_pixel_size(text_width,text_height);
-  cr->move_to(west-text_width-15,south-text_height-10);
+  //if( logo_mid == south )
+  //  logo_mid = south - text_height/2;
+  cr->move_to(west-text_width-0.025*(west-east),south-text_height-0.025*(south-north));
   layout->add_to_cairo_context(cr);
   cr->set_source_rgba(1.0,1.0,1.0,0.9);
   cr->fill();

@@ -35,7 +35,7 @@ logo.inl: logo.png
 	gdk-pixbuf-csource --raw --name=logo_inline logo.png > logo.inl
 
 logo.png: biodesign_logo_white.pdf
-	convert -density 96 biodesign_logo_white.pdf -resize 25% logo.png
+	convert -density 96 biodesign_logo_white.pdf -resize 25% -trim logo.png
 
 clean:
 	-rm *.o simchcg logo.inl logo.png
