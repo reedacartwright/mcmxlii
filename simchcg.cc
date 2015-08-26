@@ -16,7 +16,9 @@
 
 SimCHCG::SimCHCG(int width, int height, double mu) :
   grid_width_{width}, grid_height_{height}, mu_(mu),
-  worker_{width,height,mu}, worker_thread_{nullptr}
+  worker_{width,height,mu}, worker_thread_{nullptr},
+  name_{"Center for Human and Comparative Genomics"},
+  name_scale_{1.0}
 {
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
 
@@ -137,11 +139,11 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   Pango::FontDescription font;
   font.set_weight(Pango::WEIGHT_BOLD);
 
-  auto layout = create_pango_layout("Center for Human and Comparative Genomics");
+  auto layout = create_pango_layout(name_.c_str());
   int text_width, text_height;
 
   font.set_family("TeX Gyre Adventor");
-  font.set_size(48*PANGO_SCALE);
+  font.set_size(name_scale_*48*PANGO_SCALE);
   layout->set_font_description(font);
   layout->set_alignment(Pango::ALIGN_CENTER);
   layout->get_pixel_size(text_width,text_height);  

@@ -39,11 +39,11 @@ int main(int argc, char** argv)
 
 
    if(argc < 4) {
-   	std::cerr << "Usage: " << argv[0] << " width height mutation_rate"  << std::endl;
+   	std::cerr << "Usage: " << argv[0] << " width height mutation_rate [name] [name scale]"  << std::endl;
    	return 1;
    }
    int width, height;
-   double mu;
+   double mu, scale;
    try {
    	width = std::stoi(argv[1]);
    	height = std::stoi(argv[2]);
@@ -58,6 +58,17 @@ int main(int argc, char** argv)
    }
 
    SimCHCG s(width,height,mu);
+   if(argc >= 5)
+      s.name(argv[4]);
+   if(argc >= 6) {
+     try {
+      scale = std::stoi(argv[5]);
+     } catch(std::exception &e) {
+      std::cerr << "Invalid command line arguments." << std::endl;
+      return 1;
+     }
+     s.name_scale(scale);
+  }
    win.add(s);
    s.show();
 

@@ -11,6 +11,14 @@ public:
   SimCHCG(int width, int height, double mu);
   virtual ~SimCHCG();
 
+  void name(const char* n) {
+    name_ = n;
+  }
+  void name_scale(double n) {
+    name_scale_ = n;
+  }
+
+
 protected:
   //Override default signal handler:
   virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
@@ -22,6 +30,8 @@ protected:
   int grid_width_;
   int grid_height_;
   double mu_;
+  std::string name_;
+  double name_scale_;
 
   Glib::RefPtr<Gdk::Pixbuf> logo_;
 

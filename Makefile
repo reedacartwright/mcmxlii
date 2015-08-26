@@ -2,7 +2,7 @@
 
 WIDTH=400
 HEIGHT=225
-MU=1e-5
+MU=4e-6
 
 ########################
 
@@ -41,5 +41,4 @@ clean:
 	-rm *.o simchcg logo.inl logo.png
 
 run: simchcg
-	./simchcg $(WIDTH) $(HEIGHT) $(MU)
-	
+	./simchcg $(WIDTH) $(HEIGHT) $(MU) "$(MSG)" $(SCALE)
