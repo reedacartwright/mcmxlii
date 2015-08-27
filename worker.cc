@@ -38,7 +38,7 @@ const double mutation[128] = {
 
 void Worker::do_work(SimCHCG* caller)
 {
-  static_assert(num_alleles <= 16, "Too many colors.");
+  static_assert(num_alleles <= 256, "Too many colors.");
   go = true;
   gen_ = 0;
   while(go) {
@@ -51,21 +51,22 @@ void Worker::do_work(SimCHCG* caller)
     for(int y=0;y<height_;++y) {
       for(int x=0;x<width_;++x) {
         double w, weight = rand_exp(rand, a[x+y*width_].fitness);
+        int pos = x+y*width_;
         if(x > 0 && (w = rand_exp(rand, a[(x-1)+y*width_].fitness)) < weight ) {
           weight = w;
-          b[x+y*width_] = a[(x-1)+y*width_];
+          b[pos] = a[(x-1)+y*width_];
         }
         if(y > 0 && (w = rand_exp(rand, a[x+(y-1)*width_].fitness)) < weight ) {
           weight = w;
-          b[x+y*width_] = a[x+(y-1)*width_];
+          b[pos] = a[x+(y-1)*width_];
         }
         if(x < width_-1 && (w = rand_exp(rand, a[(x+1)+y*width_].fitness)) < weight ) {
           weight = w;
-          b[x+y*width_] = a[(x+1)+y*width_];
+          b[pos] = a[(x+1)+y*width_];
         }
         if(y < height_-1 && (w = rand_exp(rand, a[x+(y+1)*width_].fitness)) < weight ) {
           weight = w;
-          b[x+y*width_] = a[x+(y+1)*width_];
+          b[pos] = a[x+(y+1)*width_];
         }
         if(m > 0) {
           m -= 1;
@@ -73,12 +74,17 @@ void Worker::do_work(SimCHCG* caller)
         }
         m = static_cast<int>(rand_exp(rand,mu_));
         uint64_t r = rand.get_uint64();
-        b[x+y*width_].fitness *= mutation[r >> 57]; // use top 7 bits for phenotype
-        r &= 0x0FFFFFFFFFFFFFFF;
-        b[x+y*width_].type = (b[x+y*width_].type & 0xFFFFFFFFFFFFFFF0) |
-            (((b[x+y*width_].type & 0xF) + r % (num_alleles-1)) % num_alleles);
+        b[pos].fitness *= mutation[r >> 57]; // use top 7 bits for phenotype
+        r &= 0x00FFFFFFFFFFFFFF;
+        // Get the color of the parent
+        uint64_t color = b[pos].type & 0xFF;
+        // Mutate color so that it does not match the parent
+        color = (color + r % (num_alleles-1)) % num_alleles;
+        // Store the allele color in the bottom 8 bits.
+        b[pos].type = (b[pos].type & 0xFFFFFFFFFFFFFF00) | color;
       }
     }
+    // Every so often rescale fitnesses to prevent underflow/overflow
     if((1+gen_) % 10000 == 0) {
       auto it = std::max_element(b.begin(),b.end());
       double m = it->fitness;
@@ -86,7 +92,7 @@ void Worker::do_work(SimCHCG* caller)
         for(auto &aa : b) {
           uint64_t x = aa.type;
           aa.fitness = aa.fitness/m;
-          aa.type = (aa.type & 0xFFFFFFFFFFFFFFF0) | (x & 0xF);
+          aa.type = (aa.type & 0xFFFFFFFFFFFFFF00) | (x & 0xFF);
         }
       }
     }

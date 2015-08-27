@@ -114,7 +114,7 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   unsigned long long gen = worker_.get_gen();
   for(int y=0;y<grid_height_;++y) {
     for(int x=0;x<grid_width_;++x) {
-      int a = static_cast<int>(data[x+y*grid_width_].type & 0xF);
+      int a = static_cast<int>(data[x+y*grid_width_].type & 0xFF);
       cr->set_source_rgba(
         col_set[a].red, col_set[a].blue,
         col_set[a].green, col_set[a].alpha
