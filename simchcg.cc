@@ -139,6 +139,7 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   Pango::FontDescription font;
   font.set_weight(Pango::WEIGHT_BOLD);
 
+  cr->set_antialias(Cairo::ANTIALIAS_GRAY);
   auto layout = create_pango_layout(name_.c_str());
   int text_width, text_height;
 

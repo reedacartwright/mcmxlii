@@ -3,6 +3,7 @@
 WIDTH=400
 HEIGHT=225
 MU=4e-6
+DISPLAYMSG=Human and Comparative Genomics Laboratory
 
 ########################
 
@@ -42,3 +43,6 @@ clean:
 
 run: simchcg
 	./simchcg $(WIDTH) $(HEIGHT) $(MU) "$(MSG)" $(SCALE)
+
+display: simchcg
+	./simchcg $(WIDTH) $(HEIGHT) $(MU) "$(DISPLAYMSG)" $(SCALE)
