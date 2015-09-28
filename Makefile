@@ -3,12 +3,18 @@
 WIDTH=400
 HEIGHT=225
 MU=4e-6
-DISPLAYMSG=Human and Comparative Genomics Laboratory
+SCALE=1
+define DISPLAYMSG
+Human and Comparative
+Genomics Laboratory
+endef
+export DISPLAYMSG
 
 ########################
 
 
-CXXFLAGS += -std=c++11 -g -O3 -march=native
+CXXFLAGS += -std=c++11 -g -O3 -march=native -Wno-deprecated-declarations
+LDFLAGS += -lboost_program_options -lboost_filesystem -lboost_system
 
 GLIBS=$(shell pkg-config --libs gtkmm-3.0)
 GFLAGS=$(shell pkg-config --cflags gtkmm-3.0)
@@ -18,9 +24,9 @@ DBUSFLAGS=$(shell pkg-config --cflags dbus-1)
 all: simchcg
 
 simchcg: main.o simchcg.o worker.o rexp.o
-	$(CXX) $(CXXFLAGS) -o simchcg main.o simchcg.o worker.o rexp.o $(GLIBS) $(DBUSLIBS)
+	$(CXX) $(CXXFLAGS) -o simchcg main.o simchcg.o worker.o rexp.o $(GLIBS) $(DBUSLIBS) $(LDFLAGS)
 
-main.o: main.cc simchcg.h worker.h xorshift64.h
+main.o: main.cc simchcg.h worker.h xorshift64.h xm.h main.xmh
 	$(CXX) -c $(CXXFLAGS) $(GFLAGS) $(DBUSFLAGS) main.cc
 
 simchcg.o: simchcg.cc simchcg.h worker.h xorshift64.h logo.inl
@@ -42,7 +48,12 @@ clean:
 	-rm *.o simchcg logo.inl logo.png
 
 run: simchcg
-	./simchcg $(WIDTH) $(HEIGHT) $(MU) "$(MSG)" $(SCALE)
+	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "" -s "$(SCALE)"
 
 display: simchcg
-	./simchcg $(WIDTH) $(HEIGHT) $(MU) "$(DISPLAYMSG)" $(SCALE)
+	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "$$DISPLAYMSG" -s "$(SCALE)"
+
+video:
+	#./simchcg -w 348 -h 261 --win-width=1392 --win-height=1044 -t ""
+	#./simchcg -w 200 -h 150 --win-width=800 --win-height=600 -t "" --delay 5
+	./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 10

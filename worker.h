@@ -99,7 +99,7 @@ typedef std::vector<cell> pop_t;
 class Worker
 {
 public:
-  Worker(int width, int height, double mu);
+  Worker(int width, int height, double mu, int delay=0);
 
   // Thread function.
   void do_work(SimCHCG* caller);
@@ -125,6 +125,7 @@ private:
   int height_;
   double mu_;
   unsigned long long gen_;
+  int delay_;
 
   std::unique_ptr<pop_t> pop_a_;
   std::unique_ptr<pop_t> pop_b_;

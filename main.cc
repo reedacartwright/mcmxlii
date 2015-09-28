@@ -2,6 +2,20 @@
 #include <gtkmm/application.h>
 #include <gtkmm/window.h>
 
+#include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
+
+namespace boost { namespace program_options {
+
+template<>
+typed_value<bool> *value(bool *v) {
+    return bool_switch(v);
+}
+
+}}
+
+
 #include <iostream>
 #include <string>
 #include <exception>
@@ -20,57 +34,84 @@ bool on_key(GdkEventKey* event, Gtk::Window *win) {
 	return true;
 }
 
-int main(int argc, char** argv)
-{
-   auto app = Gtk::Application::create(argc, argv, "ht.cartwrig.simchcg",
+// use X-Macros to specify argument variables
+struct arg_t {
+#define XM(lname, sname, desc, type, def) type XV(lname) ;
+# include "main.xmh"
+#undef XM
+    std::string run_name;
+    std::string run_path;
+};
+
+arg_t process_command_line(po::options_description *opt_desc, int argc, char** argv);
+
+int main(int argc, char** argv) {
+    auto app = Gtk::Application::create(argc, argv, "ht.cartwrig.simchcg",
    		Gio::APPLICATION_HANDLES_COMMAND_LINE);
     app->signal_command_line().connect(
       sigc::bind(sigc::ptr_fun(on_cmd), app), false);
 
-   Gtk::Window win{};
-   win.set_title("Center for Human and Comparative Genomics");
-   win.set_default_size(1920,1080);
-   win.set_border_width(0);
-   win.fullscreen();
+    po::options_description desc{"Allowed Options"};
+    arg_t arg;
+    try {
+        arg = process_command_line(&desc, argc, argv);
+    } catch(std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        return 1;
+    }
 
-   win.add_events(Gdk::KEY_PRESS_MASK);
-   win.signal_key_press_event().connect(
-   	sigc::bind(sigc::ptr_fun(&on_key), &win),false);
+    Gtk::Window win{};
+    win.set_title("Human and Comparative Genomics Laboratory");
+    win.set_default_size(arg.win_width,arg.win_height);
+    win.set_border_width(0);
+
+    if(arg.fullscreen) {
+        win.fullscreen();
+    }
+
+    win.add_events(Gdk::KEY_PRESS_MASK);
+    win.signal_key_press_event().connect(
+        sigc::bind(sigc::ptr_fun(&on_key), &win),false);
+
+    if(arg.help) {
+        std::cerr << "Usage:\n  " << arg.run_name << " [ options ]\n";
+        std::cerr << desc << "\n";
+        return 0;
+    }
+
+    if(arg.width <= 0 || arg.height <= 0 || arg.mu <= 0.0) {
+        std::cerr << "Invalid command line arguments." << std::endl;
+        return 1;
+    }
+
+    SimCHCG s(arg.width,arg.height,arg.mu,arg.delay);
+    s.name(arg.text.c_str());
+    s.name_scale(arg.text_scale);
+    win.add(s);
+    s.show();
+
+    return app->run(win);
+}
+
+arg_t process_command_line(po::options_description *opt_desc, int argc, char** argv) {
+    po::variables_map vm;
+    arg_t arg;
+    boost::filesystem::path bin_path(argv[0]);
+    arg.run_name = bin_path.filename().generic_string();
+    arg.run_path = bin_path.parent_path().generic_string();
+
+    opt_desc->add_options()
+    #define XM(lname, sname, desc, type, def) ( \
+        XS(lname) IFD(sname, "," BOOST_PP_STRINGIZE sname), \
+        po::value< type >(&arg.XV(lname))->default_value(def), \
+        desc )
+    #   include "main.xmh"
+    #undef XM
+        ;
 
 
-   if(argc < 4) {
-   	std::cerr << "Usage: " << argv[0] << " width height mutation_rate [name] [name scale]"  << std::endl;
-   	return 1;
-   }
-   int width, height;
-   double mu, scale;
-   try {
-   	width = std::stoi(argv[1]);
-   	height = std::stoi(argv[2]);
-   	mu = std::stod(argv[3]);
-   } catch(std::exception &e) {
-   	std::cerr << "Invalid command line arguments." << std::endl;
-   	return 1;
-   }
-   if(width <= 0 || height <= 0 || mu <= 0.0) {
-   	std::cerr << "Invalid command line arguments." << std::endl;
-   	return 1;   	
-   }
+    po::store(po::command_line_parser(argc, argv).options(*opt_desc).run(), vm);
+    po::notify(vm);
 
-   SimCHCG s(width,height,mu);
-   if(argc >= 5)
-      s.name(argv[4]);
-   if(argc >= 6) {
-     try {
-      scale = std::stoi(argv[5]);
-     } catch(std::exception &e) {
-      std::cerr << "Invalid command line arguments." << std::endl;
-      return 1;
-     }
-     s.name_scale(scale);
-  }
-   win.add(s);
-   s.show();
-
-   return app->run(win);
+    return arg;
 }

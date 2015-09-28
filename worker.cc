@@ -5,12 +5,13 @@
 
 #include <iostream>
 
-Worker::Worker(int width, int height, double mu) :
+Worker::Worker(int width, int height, double mu,int delay) :
   go{true},
   width_{width}, height_{height}, mu_{mu},
   pop_a_{new pop_t(width*height)},
   pop_b_{new pop_t(width*height)},
-  rand{create_random_seed()}
+  rand{create_random_seed()},
+  delay_{delay}
 {
 
 }
@@ -41,9 +42,12 @@ void Worker::do_work(SimCHCG* caller)
   static_assert(num_alleles <= 256, "Too many colors.");
   go = true;
   gen_ = 0;
+  sleep(delay_);
+
   while(go) {
     Glib::Threads::Mutex::Lock lock{mutex_};
     sync_.wait(mutex_);
+    gen_ += 1;
     const pop_t &a = *pop_a_.get();
     pop_t &b = *pop_b_.get();
     b = a;
@@ -100,7 +104,6 @@ void Worker::do_work(SimCHCG* caller)
 }
 
 void Worker::swap_buffers() {
-  gen_ += 1;
   std::swap(pop_a_,pop_b_);
   char buf[128];
   std::sprintf(buf, "%0.2fs: Generation %llu done.\n", timer_.elapsed(),gen_);
