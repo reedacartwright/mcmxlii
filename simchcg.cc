@@ -22,10 +22,7 @@ SimCHCG::SimCHCG(int width, int height, double mu) :
 {
   Glib::signal_timeout().connect( sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
 
-  #ifndef GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
-  //Connect the signal handler if it isn't already a virtual method override:
-  signal_draw().connect(sigc::mem_fun(*this, &SimCHCG::on_draw), false);
-  #endif //GLIBMM_DEFAULT_SIGNAL_HANDLERS_ENABLED
+  signal_queue_draw_cell().connect(sigc::mem_fun(*this, &SimCHCG::queue_draw_cell));
 
   try {
     logo_ = Gdk::Pixbuf::create_from_inline(-1,logo_inline,false);
@@ -82,11 +79,9 @@ void SimCHCG::on_unrealize() {
   Gtk::DrawingArea::on_unrealize();
 }
 
-bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
-{
-  cr->set_antialias(Cairo::ANTIALIAS_NONE);
+void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
+  Gtk::DrawingArea::on_size_allocate(allocation);
 
-  auto allocation = get_allocation();
   const int width = allocation.get_width();
   const int height = allocation.get_height();
 
@@ -94,23 +89,46 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   double h = 1.0*height/grid_height_;
 
   double cell_size = 1.0;
-  cr->save();
   if(w <= h) {
     // width is the limiting space
     double size = 1.0*grid_height_*width/grid_width_;
-    cr->translate(0,(height-size)/2);
-    cr->scale(w,w);
+    cairo_xoffset_ = 0;
+    cairo_yoffset_ = (height-size)/2;
+    cairo_scale_ = w; 
   } else {
     // height is the limiting space
     double size = 1.0*grid_width_*height/grid_height_;
-    cr->translate((width-size)/2,0);
-    cr->scale(h,h);
+    cairo_xoffset_ = (width-size)/2;
+    cairo_yoffset_ = 0;
+    cairo_scale_ = h;
   }
+}
+
+void SimCHCG::queue_draw_cell(int x, int y) {
+  queue_draw_area(
+    cairo_scale_*(x+cairo_xoffset_),
+    cairo_scale_*(y+cairo_yoffset_),
+    cairo_scale_*(x+cairo_xoffset_+1),
+    cairo_scale_*(y+cairo_yoffset_+1)
+    );
+}
+
+
+bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
+{
+  cr->set_antialias(Cairo::ANTIALIAS_NONE);
+  cr->save();
+  cr->translate(cairo_xoffset_,cairo_yoffset_);
+  cr->scale(cairo_scale_,cairo_scale_);
   cr->set_source_rgba(0.0,0.0,0.0,1.0);
   cr->paint();
-  pop_t data(grid_width_*grid_height_);
 
-  data = worker_.get_data();
+  pop_t data(grid_width_*grid_height_);
+  {
+    Glib::Threads::Mutex::Lock lock{worker_.mutex_};
+    data = worker_.get_data();
+  }
+
   unsigned long long gen = worker_.get_gen();
   for(int y=0;y<grid_height_;++y) {
     for(int x=0;x<grid_width_;++x) {
@@ -179,9 +197,9 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   //cr->set_line_width(1.0);
   //cr->stroke();
 
-  Glib::Threads::Mutex::Lock lock{worker_.mutex_};
-  worker_.swap_buffers();
-  worker_.sync_.signal();
+  //Glib::Threads::Mutex::Lock lock{worker_.mutex_};
+  //worker_.swap_buffers();
+  //worker_.sync_.signal();
   return true;
 }
 
@@ -194,7 +212,7 @@ bool SimCHCG::on_timeout()
     {
         Gdk::Rectangle r(0, 0, get_allocation().get_width(),
                 get_allocation().get_height());
-        win->invalidate_rect(r, false);
+        //win->invalidate_rect(r, false);
     }
     return true;
 }

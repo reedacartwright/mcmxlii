@@ -5,6 +5,8 @@
 
 #include "worker.h"
 
+#include <tuple>
+
 class SimCHCG : public Gtk::DrawingArea
 {
 public:
@@ -18,12 +20,21 @@ public:
     name_scale_ = n;
   }
 
+  void queue_draw_cell(int x, int y);
+
+  typedef sigc::signal<void, int, int> signal_queue_draw_cell_t;
+  signal_queue_draw_cell_t signal_queue_draw_cell() {
+    return signal_queue_draw_cell_;
+  }
+
 
 protected:
   //Override default signal handler:
-  virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr);
-  virtual void on_realize();
-  virtual void on_unrealize();
+  virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
+  virtual void on_realize() override;
+  virtual void on_unrealize() override;
+  virtual void on_size_allocate(Gtk::Allocation& allocation) override;
+
 
   bool on_timeout();
 
@@ -33,7 +44,13 @@ protected:
   std::string name_;
   double name_scale_;
 
+  double cairo_scale_;
+  double cairo_xoffset_;
+  double cairo_yoffset_;
+
   Glib::RefPtr<Gdk::Pixbuf> logo_;
+
+  signal_queue_draw_cell_t signal_queue_draw_cell_;
 
   Worker worker_;
   Glib::Threads::Thread* worker_thread_;

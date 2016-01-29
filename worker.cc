@@ -42,8 +42,11 @@ void Worker::do_work(SimCHCG* caller)
   go = true;
   gen_ = 0;
   while(go) {
+    {
     Glib::Threads::Mutex::Lock lock{mutex_};
-    sync_.wait(mutex_);
+    swap_buffers();
+    }
+    //sync_.wait(mutex_);
     const pop_t &a = *pop_a_.get();
     pop_t &b = *pop_b_.get();
     b = a;
@@ -67,6 +70,9 @@ void Worker::do_work(SimCHCG* caller)
         if(y < height_-1 && (w = rand_exp(rand, a[x+(y+1)*width_].fitness)) < weight ) {
           weight = w;
           b[pos] = a[x+(y+1)*width_];
+        }
+        if(b[pos].type != a[pos].type || m == 0) {
+          //caller->signal_queue_draw_cell().emit(x,y);
         }
         if(m > 0) {
           m -= 1;
