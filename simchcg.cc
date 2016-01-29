@@ -14,69 +14,68 @@
 
 #define OUR_FRAME_RATE 15
 
-SimCHCG::SimCHCG(int width, int height, double mu) :
-  grid_width_{width}, grid_height_{height}, mu_(mu),
-  worker_{width,height,mu}, worker_thread_{nullptr},
-  name_{"Center for Human and Comparative Genomics"},
-  name_scale_{1.0}
+SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
+    grid_width_{width}, grid_height_{height}, mu_(mu),
+    worker_{width,height,mu,delay}
 {
-  Glib::signal_timeout().connect( sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
+    Glib::signal_timeout().connect( sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
 
   signal_queue_draw_cell().connect(sigc::mem_fun(*this, &SimCHCG::queue_draw_cell));
 
-  try {
-    logo_ = Gdk::Pixbuf::create_from_inline(-1,logo_inline,false);
-  } catch(...) {
-    /* do nothing */
-  }
 
-  worker_thread_ = Glib::Threads::Thread::create([&]{
-    worker_.do_work(this);
-  });
+    try {
+        logo_ = Gdk::Pixbuf::create_from_inline(-1,logo_inline,false);
+    } catch(...) {
+        /* do nothing */
+    }
+
+    worker_thread_ = Glib::Threads::Thread::create([&]{
+        worker_.do_work(this);
+    });
 }
 
 SimCHCG::~SimCHCG()
 {
-  worker_.stop();
-  worker_thread_->join();
+    worker_.stop();
+    worker_thread_->join();
 }
 
 void SimCHCG::on_realize() {
-  // https://dxr.mozilla.org/mozilla-central/source/widget/gtk/WakeLockListener.cpp
-  Gtk::DrawingArea::on_realize();
-  auto p = get_window();
-  auto cursor = Gdk::Cursor::create(Gdk::BLANK_CURSOR);
-  p->set_cursor(cursor);
+    // https://dxr.mozilla.org/mozilla-central/source/widget/gtk/WakeLockListener.cpp
+    Gtk::DrawingArea::on_realize();
+    auto p = get_window();
+    auto cursor = Gdk::Cursor::create(Gdk::BLANK_CURSOR);
+    p->set_cursor(cursor);
 
-  uint32_t xid = GDK_WINDOW_XID(Glib::unwrap(p));
-  
-  DBusConnection* connection = dbus_bus_get(DBUS_BUS_SESSION, nullptr);
-  if(connection == nullptr)
-    return;
+    uint32_t xid = GDK_WINDOW_XID(Glib::unwrap(p));
 
-  DBusMessage* message = dbus_message_new_method_call(
-    "org.gnome.SessionManager", "/org/gnome/SessionManager",
-    "org.gnome.SessionManager", "Inhibit");
-  if(message == nullptr)
-    return;
+    DBusConnection* connection = dbus_bus_get(DBUS_BUS_SESSION, nullptr);
+    if(connection == nullptr)
+        return;
 
-  const uint32_t flags = (1 << 3); // Inhibit idle
-  const char *app = "SimCHCG";
-  const char *topic = "Fullscreen Mode";
+    DBusMessage* message = dbus_message_new_method_call(
+        "org.gnome.SessionManager", "/org/gnome/SessionManager",
+        "org.gnome.SessionManager", "Inhibit");
+    if(message == nullptr)
+        return;
 
-  dbus_message_append_args(message,
-    DBUS_TYPE_STRING, &app,   DBUS_TYPE_UINT32, &xid,
-    DBUS_TYPE_STRING, &topic, DBUS_TYPE_UINT32, &flags,
-    DBUS_TYPE_INVALID );
+    const uint32_t flags = (1 << 3); // Inhibit idle
+    const char *app = "SimHCG";
+    const char *topic = "Fullscreen Mode";
 
-  dbus_connection_send(connection, message, nullptr);
-  dbus_connection_flush(connection);
-  dbus_message_unref(message);
-  dbus_connection_unref(connection);
+    dbus_message_append_args(message,
+        DBUS_TYPE_STRING, &app,   DBUS_TYPE_UINT32, &xid,
+        DBUS_TYPE_STRING, &topic, DBUS_TYPE_UINT32, &flags,
+        DBUS_TYPE_INVALID );
+
+    dbus_connection_send(connection, message, nullptr);
+    dbus_connection_flush(connection);
+    dbus_message_unref(message);
+    dbus_connection_unref(connection);
 }
 
 void SimCHCG::on_unrealize() {
-  Gtk::DrawingArea::on_unrealize();
+    Gtk::DrawingArea::on_unrealize();
 }
 
 void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
@@ -203,15 +202,12 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
   return true;
 }
 
-
-bool SimCHCG::on_timeout()
-{
-    // force our program to redraw the entire clock.
+bool SimCHCG::on_timeout() {
+    // force our program to redraw everything
     auto win = get_window();
-    if (win)
-    {
-        Gdk::Rectangle r(0, 0, get_allocation().get_width(),
-                get_allocation().get_height());
+    if (win) {
+        //Gdk::Rectangle r(0, 0, get_allocation().get_width(),
+        //        get_allocation().get_height());
         //win->invalidate_rect(r, false);
     }
     return true;
