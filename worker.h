@@ -7,6 +7,8 @@
 #include <memory>
 #include <vector>
 
+#include <boost/timer/timer.hpp>
+
 #include "xorshift64.h"
 
 class SimCHCG;
@@ -104,8 +106,7 @@ public:
   // Thread function.
   void do_work(SimCHCG* caller);
 
-  pop_t get_data() const;
-  unsigned long long get_gen() const;
+  std::pair<pop_t,unsigned long long> get_data() const;
 
   void swap_buffers();
 

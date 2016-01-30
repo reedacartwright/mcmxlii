@@ -20,7 +20,7 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
 {
     Glib::signal_timeout().connect(sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
 
-    signal_queue_draw_cells().connect(sigc::mem_fun(*this, &SimCHCG::on_queue_draw_cells));
+    signal_queue_draw().connect(sigc::mem_fun(*this, &SimCHCG::queue_draw));
 
     try {
         logo_ = Gdk::Pixbuf::create_from_inline(-1,logo_inline,false);
@@ -88,7 +88,6 @@ void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
     double w = 1.0*width/grid_width_;
     double h = 1.0*height/grid_height_;
 
-    double cell_size = 1.0;
     if(w <= h) {
         // width is the limiting space
         double size = 1.0*grid_height_*width/grid_width_;
@@ -104,32 +103,18 @@ void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
     }
 }
 
-void SimCHCG::update_cell(int x, int y) {
-    Glib::Threads::Mutex::Lock lock{update_mutex_};
-    update_region_->do_union(Cairo::RectangleInt{
-        (int)(cairo_scale_*(x+cairo_xoffset_)),
-        (int)(cairo_scale_*(y+cairo_yoffset_)),
-        (int)(cairo_scale_*(x+cairo_xoffset_+1)),
-        (int)(cairo_scale_*(y+cairo_yoffset_+1))
-    });
-}
-
-void SimCHCG::on_queue_draw_cells() {
-    Glib::Threads::Mutex::Lock lock{update_mutex_};
-    queue_draw_region(update_region_);
-    update_region_ = Cairo::Region::create();
-}
-
 bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
+    boost::timer::auto_cpu_timer measure_speed(std::cerr,  "on_draw: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
+
     cr->set_antialias(Cairo::ANTIALIAS_NONE);
+    cr->set_source_rgba(0.0,0.0,0.0,1.0);
+    cr->paint();
     cr->save();
     cr->translate(cairo_xoffset_,cairo_yoffset_);
     cr->scale(cairo_scale_,cairo_scale_);
-    cr->set_source_rgba(0.0,0.0,0.0,1.0);
-    cr->paint();
 
-    pop_t data = worker_.get_data();
+    auto data = worker_.get_data();
 
     std::vector<Cairo::Rectangle> rect_list;
     cr->copy_clip_rectangle_list(rect_list);
@@ -138,11 +123,10 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
         int east = floor(rect.x);
         int west = ceil(rect.x+rect.width);
         int north = floor(rect.y);
-        int south = floor(rect.y+rect.height);
-        std::cerr << "Update: " << east << "-" << west << "x" << north << "-" << south << "\n";
+        int south = ceil(rect.y+rect.height);
         for(int y=north;y<south;++y) {
             for(int x=east;x<west;++x) {
-                int a = static_cast<int>(data[x+y*grid_width_].type & 0xFF);
+                int a = static_cast<int>(data.first[x+y*grid_width_].type & 0xFF);
                 cr->set_source_rgba(
                     col_set[a].red, col_set[a].blue,
                     col_set[a].green, col_set[a].alpha
@@ -190,7 +174,7 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     //cr->stroke();
 
     char msg[128];
-    sprintf(msg,"Generation: %llu", worker_.get_gen());
+    sprintf(msg,"Generation: %llu", data.second);
 
     font.set_family("Source Sans Pro");
     font.set_size(20*PANGO_SCALE);

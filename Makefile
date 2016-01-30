@@ -14,7 +14,7 @@ export DISPLAYMSG
 
 
 CXXFLAGS += -std=c++11 -g -O3 -march=native -Wno-deprecated-declarations
-LDFLAGS += -lboost_program_options -lboost_filesystem -lboost_system
+LDFLAGS += -lboost_program_options -lboost_filesystem -lboost_system -lboost_timer
 
 GLIBS=$(shell pkg-config --libs gtkmm-3.0)
 GFLAGS=$(shell pkg-config --cflags gtkmm-3.0)
@@ -56,8 +56,8 @@ display: simchcg
 video:
 	#./simchcg -w 348 -h 261 --win-width=1392 --win-height=1044 -t ""
 	#./simchcg -w 200 -h 150 --win-width=800 --win-height=600 -t "" --delay 5
-	./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 10 # this one was used for class
+	#./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 10 # this one was used for class
 	./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 1
 
 runtest:
-	./simchcg -w 800 -h 800 -m 1e-4 --win-width=800 --win-height=800 -t "" --delay 1
+	./simchcg -w 400 -h 400 -m 1e-5 --win-width=600 --win-height=600 -t "" --delay 1

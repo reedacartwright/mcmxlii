@@ -4,6 +4,7 @@
 #include <gtkmm/drawingarea.h>
 
 #include "worker.h"
+#include <boost/timer/timer.hpp>
 
 #include <tuple>
 
@@ -20,12 +21,9 @@ public:
         name_scale_ = n;
     }
 
-    void update_cell(int x, int y);
-
-    typedef sigc::signal<void> signal_queue_draw_cells_t;
-
-    signal_queue_draw_cells_t signal_queue_draw_cells() {
-        return signal_queue_draw_cells_;
+    typedef sigc::signal<void> signal_queue_draw_t;
+    signal_queue_draw_t signal_queue_draw() {
+        return signal_queue_draw_;
     }
 
 protected:
@@ -57,7 +55,7 @@ protected:
     Worker worker_;
     Glib::Threads::Thread* worker_thread_{nullptr};
 
-    signal_queue_draw_cells_t signal_queue_draw_cells_;
+    signal_queue_draw_t signal_queue_draw_;
 };
 
-#endif // GTKMM_EXAMPLE_CLOCK_H
+#endif

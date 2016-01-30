@@ -42,6 +42,7 @@ void Worker::do_work(SimCHCG* caller)
     while(go) {
         {
         Glib::Threads::RWLock::ReaderLock lock{data_lock_};
+        boost::timer::auto_cpu_timer measure_speed(std::cerr,  "do_work: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
         const pop_t &a = *pop_a_.get();
         pop_t &b = *pop_b_.get();
         b = a;
@@ -65,9 +66,6 @@ void Worker::do_work(SimCHCG* caller)
                 if(y < height_-1 && (w = rand_exp(rand, a[x+(y+1)*width_].fitness)) < weight ) {
                     weight = w;
                     b[pos] = a[x+(y+1)*width_];
-                }
-                if(b[pos].type != a[pos].type || m == 0) {
-                    caller->update_cell(x,y);
                 }
                 if(m > 0) {
                     m -= 1;
@@ -100,7 +98,7 @@ void Worker::do_work(SimCHCG* caller)
         }
         swap_buffers();
 
-        caller->signal_queue_draw_cells().emit();
+        caller->signal_queue_draw().emit();
 
         {
             Glib::Threads::Mutex::Lock lock{sync_mutex_};
@@ -112,14 +110,9 @@ void Worker::do_work(SimCHCG* caller)
     }
 }
 
-pop_t Worker::get_data() const {
+std::pair<pop_t,unsigned long long> Worker::get_data() const {
     Glib::Threads::RWLock::ReaderLock lock{data_lock_};
-    return *pop_a_.get();
-}
-
-unsigned long long Worker::get_gen() const {
-    Glib::Threads::RWLock::ReaderLock lock{data_lock_};
-    return gen_;
+    return {*pop_a_.get(),gen_};
 }
 
 void Worker::swap_buffers() {
