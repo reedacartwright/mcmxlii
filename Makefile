@@ -13,7 +13,7 @@ export DISPLAYMSG
 ########################
 
 
-CXXFLAGS += -std=c++11 -g -O3 -march=native -Wno-deprecated-declarations
+CXXFLAGS += -std=c++11 -g -O2 -march=native -Wno-deprecated-declarations
 LDFLAGS += -lboost_program_options -lboost_filesystem -lboost_system -lboost_timer
 
 GLIBS=$(shell pkg-config --libs gtkmm-3.0)
@@ -50,6 +50,9 @@ clean:
 run: simchcg
 	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "" -s "$(SCALE)"
 
+runbig: simchcg
+	./simchcg -f -w "600" -h "337" -m "$(MU)" -t "" -s "$(SCALE)"
+
 display: simchcg
 	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "$$DISPLAYMSG" -s "$(SCALE)"
 
@@ -60,4 +63,4 @@ video:
 	./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 1
 
 runtest:
-	./simchcg -w 400 -h 400 -m 1e-5 --win-width=600 --win-height=600 -t "" --delay 1
+	./simchcg -w 400 -h 400 -m 1e-5 --win-width=600 --win-height=400 -t "" --delay 1

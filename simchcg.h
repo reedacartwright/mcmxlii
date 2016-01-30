@@ -49,9 +49,6 @@ protected:
 
     Glib::RefPtr<Gdk::Pixbuf> logo_;
 
-    Glib::Threads::Mutex update_mutex_;
-    Cairo::RefPtr<Cairo::Region> update_region_;
-
     Worker worker_;
     Glib::Threads::Thread* worker_thread_{nullptr};
 

@@ -28,8 +28,6 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
         /* do nothing */
     }
 
-    update_region_ = Cairo::Region::create();
-
     worker_thread_ = Glib::Threads::Thread::create([&]{
         worker_.do_work(this);
     });
@@ -108,36 +106,25 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     boost::timer::auto_cpu_timer measure_speed(std::cerr,  "on_draw: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
 
     cr->set_antialias(Cairo::ANTIALIAS_NONE);
-    cr->set_source_rgba(0.0,0.0,0.0,1.0);
-    cr->paint();
     cr->save();
     cr->translate(cairo_xoffset_,cairo_yoffset_);
     cr->scale(cairo_scale_,cairo_scale_);
+    cr->set_source_rgba(0.0,0.0,0.0,1.0);
+    cr->paint();
 
     auto data = worker_.get_data();
 
-    std::vector<Cairo::Rectangle> rect_list;
-    cr->copy_clip_rectangle_list(rect_list);
-
-    for(auto &&rect : rect_list) {
-        int east = floor(rect.x);
-        int west = ceil(rect.x+rect.width);
-        int north = floor(rect.y);
-        int south = ceil(rect.y+rect.height);
-        for(int y=north;y<south;++y) {
-            for(int x=east;x<west;++x) {
-                int a = static_cast<int>(data.first[x+y*grid_width_].type & 0xFF);
-                cr->set_source_rgba(
-                    col_set[a].red, col_set[a].blue,
-                    col_set[a].green, col_set[a].alpha
-                );
-                cr->rectangle(x,y,1.0,1.0);
-                cr->fill();
-            }
+    for(int y=0;y<grid_height_;++y) {
+        for(int x=0;x<grid_width_;++x) {
+            int a = static_cast<int>(data.first[x+y*grid_width_].type & 0xFF);
+            cr->set_source_rgba(
+                col_set[a].red, col_set[a].blue,
+                col_set[a].green, col_set[a].alpha
+            );
+            cr->rectangle(x,y,1.0,1.0);
+            cr->fill();
         }
-
     }
-
     double east = 0, north = 0, west = grid_width_, south = grid_height_;
     cr->user_to_device(west,south);
     cr->user_to_device(east,north);

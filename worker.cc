@@ -17,8 +17,8 @@ Worker::Worker(int width, int height, double mu,int delay) :
 }
 
 void Worker::stop() {
-  go = false;
-  signal_next_generation();
+    go = false;
+    signal_next_generation();
 }
 
 const double mutation[128] = {
@@ -36,11 +36,11 @@ void Worker::do_work(SimCHCG* caller)
 {
     static_assert(num_alleles <= 256, "Too many colors.");
     go = true;
+    next_generation = false;
     gen_ = 0;
     sleep(delay_);
 
     while(go) {
-        {
         Glib::Threads::RWLock::ReaderLock lock{data_lock_};
         boost::timer::auto_cpu_timer measure_speed(std::cerr,  "do_work: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
         const pop_t &a = *pop_a_.get();
@@ -95,18 +95,15 @@ void Worker::do_work(SimCHCG* caller)
                 }
             }
         }
-        }
+        lock.release();
+
         swap_buffers();
-
         caller->signal_queue_draw().emit();
-
-        {
-            Glib::Threads::Mutex::Lock lock{sync_mutex_};
-            next_generation = false;
-            while(!next_generation) {
-                sync_.wait(sync_mutex_);
-            }
+        Glib::Threads::Mutex::Lock slock{sync_mutex_};
+        while(!next_generation) {
+            sync_.wait(sync_mutex_);
         }
+        next_generation = false;
     }
 }
 
