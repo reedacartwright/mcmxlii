@@ -3,7 +3,7 @@
 WIDTH=400
 HEIGHT=225
 MU=4e-6
-SCALE=1
+SCALE=1.44
 define DISPLAYMSG
 Human and Comparative
 Genomics Laboratory
@@ -13,7 +13,7 @@ export DISPLAYMSG
 ########################
 
 
-CXXFLAGS += -std=c++11 -g -O2 -march=native -Wno-deprecated-declarations
+CXXFLAGS += -std=c++11 -g -O3 -march=native -Wno-deprecated-declarations
 LDFLAGS += -lboost_program_options -lboost_filesystem -lboost_system -lboost_timer
 
 GLIBS=$(shell pkg-config --libs gtkmm-3.0)
@@ -45,7 +45,7 @@ logo.png: biodesign_logo_white.pdf
 	convert -density 96 biodesign_logo_white.pdf -resize 25% -trim logo.png
 
 clean:
-	-rm *.o simchcg logo.inl logo.png
+	-rm *.o simchcg
 
 run: simchcg
 	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "" -s "$(SCALE)"

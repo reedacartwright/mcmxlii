@@ -1,6 +1,7 @@
 #include "simchcg.h"
 #include <gtkmm/application.h>
 #include <gtkmm/window.h>
+#include <gtkmm/gesturesingle.h>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -33,6 +34,12 @@ bool on_key(GdkEventKey* event, Gtk::Window *win) {
 	}
 	return true;
 }
+
+bool on_touch(GdkEventTouch* event, Gtk::Window *win) {
+  std::cerr << "====TOUCHED====\n";
+  return true;
+}
+
 
 // use X-Macros to specify argument variables
 struct arg_t {
@@ -69,9 +76,12 @@ int main(int argc, char** argv) {
         win.fullscreen();
     }
 
-    win.add_events(Gdk::KEY_PRESS_MASK);
+    win.add_events(Gdk::KEY_PRESS_MASK | Gdk::TOUCH_MASK);
     win.signal_key_press_event().connect(
-        sigc::bind(sigc::ptr_fun(&on_key), &win),false);
+        sigc::bind(sigc::ptr_fun(&on_key), &win), false);
+
+    win.signal_touch_event().connect(
+        sigc::bind(sigc::ptr_fun(&on_touch), &win), false);
 
     if(arg.help) {
         std::cerr << "Usage:\n  " << arg.run_name << " [ options ]\n";

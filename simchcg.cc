@@ -103,7 +103,7 @@ void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
 
 bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
-    boost::timer::auto_cpu_timer measure_speed(std::cerr,  "on_draw: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
+    //boost::timer::auto_cpu_timer measure_speed(std::cerr,  "on_draw: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
 
     cr->set_antialias(Cairo::ANTIALIAS_NONE);
     cr->save();

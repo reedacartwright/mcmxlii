@@ -42,7 +42,7 @@ void Worker::do_work(SimCHCG* caller)
 
     while(go) {
         Glib::Threads::RWLock::ReaderLock lock{data_lock_};
-        boost::timer::auto_cpu_timer measure_speed(std::cerr,  "do_work: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
+        //boost::timer::auto_cpu_timer measure_speed(std::cerr,  "do_work: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
         const pop_t &a = *pop_a_.get();
         pop_t &b = *pop_b_.get();
         b = a;
