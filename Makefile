@@ -56,4 +56,8 @@ display: simchcg
 video:
 	#./simchcg -w 348 -h 261 --win-width=1392 --win-height=1044 -t ""
 	#./simchcg -w 200 -h 150 --win-width=800 --win-height=600 -t "" --delay 5
-	./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 10
+	./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 10 # this one was used for class
+	./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 1
+
+runtest:
+	./simchcg -w 800 -h 800 -m 1e-4 --win-width=800 --win-height=800 -t "" --delay 1

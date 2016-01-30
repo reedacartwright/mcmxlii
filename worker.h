@@ -104,16 +104,15 @@ public:
   // Thread function.
   void do_work(SimCHCG* caller);
 
-  const pop_t& get_data() const;
-  unsigned long long get_gen() const { return gen_; }
+  pop_t get_data() const;
+  unsigned long long get_gen() const;
 
   void swap_buffers();
 
   void stop();
 
   // Synchronizes access to member data.
-  mutable Glib::Threads::Cond sync_;
-  mutable Glib::Threads::Mutex mutex_;
+  void signal_next_generation();
 
 private:
   Glib::Timer timer_;
@@ -131,6 +130,13 @@ private:
   std::unique_ptr<pop_t> pop_b_;
 
   xorshift64 rand;
+
+  Glib::Threads::Cond sync_;
+  Glib::Threads::Mutex sync_mutex_;
+  bool next_generation{false};
+
+  mutable Glib::Threads::RWLock data_lock_;
+
 };
 
 #endif // GTKMM_EXAMPLEWORKER_H

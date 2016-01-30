@@ -18,16 +18,17 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
     grid_width_{width}, grid_height_{height}, mu_(mu),
     worker_{width,height,mu,delay}
 {
-    Glib::signal_timeout().connect( sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
+    Glib::signal_timeout().connect(sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
 
-  signal_queue_draw_cell().connect(sigc::mem_fun(*this, &SimCHCG::queue_draw_cell));
-
+    signal_queue_draw_cells().connect(sigc::mem_fun(*this, &SimCHCG::on_queue_draw_cells));
 
     try {
         logo_ = Gdk::Pixbuf::create_from_inline(-1,logo_inline,false);
     } catch(...) {
         /* do nothing */
     }
+
+    update_region_ = Cairo::Region::create();
 
     worker_thread_ = Glib::Threads::Thread::create([&]{
         worker_.do_work(this);
@@ -79,136 +80,140 @@ void SimCHCG::on_unrealize() {
 }
 
 void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
-  Gtk::DrawingArea::on_size_allocate(allocation);
+    Gtk::DrawingArea::on_size_allocate(allocation);
 
-  const int width = allocation.get_width();
-  const int height = allocation.get_height();
+    const int width = allocation.get_width();
+    const int height = allocation.get_height();
 
-  double w = 1.0*width/grid_width_;
-  double h = 1.0*height/grid_height_;
+    double w = 1.0*width/grid_width_;
+    double h = 1.0*height/grid_height_;
 
-  double cell_size = 1.0;
-  if(w <= h) {
-    // width is the limiting space
-    double size = 1.0*grid_height_*width/grid_width_;
-    cairo_xoffset_ = 0;
-    cairo_yoffset_ = (height-size)/2;
-    cairo_scale_ = w; 
-  } else {
-    // height is the limiting space
-    double size = 1.0*grid_width_*height/grid_height_;
-    cairo_xoffset_ = (width-size)/2;
-    cairo_yoffset_ = 0;
-    cairo_scale_ = h;
-  }
+    double cell_size = 1.0;
+    if(w <= h) {
+        // width is the limiting space
+        double size = 1.0*grid_height_*width/grid_width_;
+        cairo_xoffset_ = 0;
+        cairo_yoffset_ = (height-size)/2;
+        cairo_scale_ = w; 
+    } else {
+        // height is the limiting space
+        double size = 1.0*grid_width_*height/grid_height_;
+        cairo_xoffset_ = (width-size)/2;
+        cairo_yoffset_ = 0;
+        cairo_scale_ = h;
+    }
 }
 
-void SimCHCG::queue_draw_cell(int x, int y) {
-  queue_draw_area(
-    cairo_scale_*(x+cairo_xoffset_),
-    cairo_scale_*(y+cairo_yoffset_),
-    cairo_scale_*(x+cairo_xoffset_+1),
-    cairo_scale_*(y+cairo_yoffset_+1)
-    );
+void SimCHCG::update_cell(int x, int y) {
+    Glib::Threads::Mutex::Lock lock{update_mutex_};
+    update_region_->do_union(Cairo::RectangleInt{
+        (int)(cairo_scale_*(x+cairo_xoffset_)),
+        (int)(cairo_scale_*(y+cairo_yoffset_)),
+        (int)(cairo_scale_*(x+cairo_xoffset_+1)),
+        (int)(cairo_scale_*(y+cairo_yoffset_+1))
+    });
 }
 
+void SimCHCG::on_queue_draw_cells() {
+    Glib::Threads::Mutex::Lock lock{update_mutex_};
+    queue_draw_region(update_region_);
+    update_region_ = Cairo::Region::create();
+}
 
 bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
-  cr->set_antialias(Cairo::ANTIALIAS_NONE);
-  cr->save();
-  cr->translate(cairo_xoffset_,cairo_yoffset_);
-  cr->scale(cairo_scale_,cairo_scale_);
-  cr->set_source_rgba(0.0,0.0,0.0,1.0);
-  cr->paint();
+    cr->set_antialias(Cairo::ANTIALIAS_NONE);
+    cr->save();
+    cr->translate(cairo_xoffset_,cairo_yoffset_);
+    cr->scale(cairo_scale_,cairo_scale_);
+    cr->set_source_rgba(0.0,0.0,0.0,1.0);
+    cr->paint();
 
-  pop_t data(grid_width_*grid_height_);
-  {
-    Glib::Threads::Mutex::Lock lock{worker_.mutex_};
-    data = worker_.get_data();
-  }
+    pop_t data = worker_.get_data();
 
-  unsigned long long gen = worker_.get_gen();
-  for(int y=0;y<grid_height_;++y) {
-    for(int x=0;x<grid_width_;++x) {
-      int a = static_cast<int>(data[x+y*grid_width_].type & 0xFF);
-      cr->set_source_rgba(
-        col_set[a].red, col_set[a].blue,
-        col_set[a].green, col_set[a].alpha
-      );
-      cr->rectangle(x,y,1.0,1.0);
-      cr->fill();
+    std::vector<Cairo::Rectangle> rect_list;
+    cr->copy_clip_rectangle_list(rect_list);
+
+    for(auto &&rect : rect_list) {
+        int east = floor(rect.x);
+        int west = ceil(rect.x+rect.width);
+        int north = floor(rect.y);
+        int south = floor(rect.y+rect.height);
+        std::cerr << "Update: " << east << "-" << west << "x" << north << "-" << south << "\n";
+        for(int y=north;y<south;++y) {
+            for(int x=east;x<west;++x) {
+                int a = static_cast<int>(data[x+y*grid_width_].type & 0xFF);
+                cr->set_source_rgba(
+                    col_set[a].red, col_set[a].blue,
+                    col_set[a].green, col_set[a].alpha
+                );
+                cr->rectangle(x,y,1.0,1.0);
+                cr->fill();
+            }
+        }
+
     }
-  }
-  double east = 0, north = 0, west = grid_width_, south = grid_height_;
-  cr->user_to_device(west,south);
-  cr->user_to_device(east,north);
-  cr->restore();
 
-  int logo_top = south, logo_mid = south;
-  if(logo_) {
-    logo_top = south-logo_->get_height()-0.025*(south-north);
-    //logo_mid = south-logo_->get_height()/2;
-    Gdk::Cairo::set_source_pixbuf(cr, logo_, east+0.025*(west-east), logo_top);
-    cr->paint_with_alpha(0.9);
-  }
+    double east = 0, north = 0, west = grid_width_, south = grid_height_;
+    cr->user_to_device(west,south);
+    cr->user_to_device(east,north);
+    cr->restore();
 
-  Pango::FontDescription font;
-  font.set_weight(Pango::WEIGHT_BOLD);
+    int logo_top = south, logo_mid = south;
+    if(logo_) {
+        logo_top = south-logo_->get_height()-0.025*(south-north);
+        //logo_mid = south-logo_->get_height()/2;
+        Gdk::Cairo::set_source_pixbuf(cr, logo_, east+0.025*(west-east), logo_top);
+        cr->paint_with_alpha(0.9);
+    }
 
-  cr->set_antialias(Cairo::ANTIALIAS_GRAY);
-  auto layout = create_pango_layout(name_.c_str());
-  int text_width, text_height;
+    Pango::FontDescription font;
+    font.set_weight(Pango::WEIGHT_BOLD);
 
-  font.set_family("TeX Gyre Adventor");
-  font.set_size(name_scale_*48*PANGO_SCALE);
-  layout->set_font_description(font);
-  layout->set_alignment(Pango::ALIGN_CENTER);
-  layout->get_pixel_size(text_width,text_height);  
-  cr->move_to(east+(west-east)/2.0-text_width/2.0, north+(logo_top-north)/2.0-text_height/2.0);
-  layout->add_to_cairo_context(cr);
-  cr->set_source_rgba(1.0,1.0,1.0,0.9);
-  cr->fill();
-  // NOTE: If you want to add an outline, uncomment these lines and comment the line above.
-  //cr->fill_preserve();
-  //cr->set_source_rgba(0.0,0.0,0.0,0.2);
-  //cr->set_line_width(0.5);
-  //cr->stroke();
+    cr->set_antialias(Cairo::ANTIALIAS_GRAY);
+    auto layout = create_pango_layout(name_.c_str());
+    int text_width, text_height;
 
-  char msg[128];
-  sprintf(msg,"Generation: %llu", gen);
+    font.set_family("TeX Gyre Adventor");
+    font.set_size(name_scale_*48*PANGO_SCALE);
+    layout->set_font_description(font);
+    layout->set_alignment(Pango::ALIGN_CENTER);
+    layout->get_pixel_size(text_width,text_height);  
+    cr->move_to(east+(west-east)/2.0-text_width/2.0, north+(logo_top-north)/2.0-text_height/2.0);
+    layout->add_to_cairo_context(cr);
+    cr->set_source_rgba(1.0,1.0,1.0,0.9);
+    cr->fill();
+    // NOTE: If you want to add an outline, uncomment these lines and comment the line above.
+    //cr->fill_preserve();
+    //cr->set_source_rgba(0.0,0.0,0.0,0.2);
+    //cr->set_line_width(0.5);
+    //cr->stroke();
 
-  font.set_family("Source Sans Pro");
-  font.set_size(20*PANGO_SCALE);
-  layout->set_font_description(font);
+    char msg[128];
+    sprintf(msg,"Generation: %llu", worker_.get_gen());
 
-  layout->set_text(msg);
-  layout->get_pixel_size(text_width,text_height);
-  //if( logo_mid == south )
-  //  logo_mid = south - text_height/2;
-  cr->move_to(west-text_width-0.025*(west-east),south-text_height-0.025*(south-north));
-  layout->add_to_cairo_context(cr);
-  cr->set_source_rgba(1.0,1.0,1.0,0.9);
-  cr->fill();
-  // NOTE: If you want to add an outline, uncomment these lines and comment the line above.
-  //cr->fill_preserve();
-  //cr->set_source_rgba(0.0,0.0,0.0,0.2);
-  //cr->set_line_width(1.0);
-  //cr->stroke();
+    font.set_family("Source Sans Pro");
+    font.set_size(20*PANGO_SCALE);
+    layout->set_font_description(font);
 
-  //Glib::Threads::Mutex::Lock lock{worker_.mutex_};
-  //worker_.swap_buffers();
-  //worker_.sync_.signal();
-  return true;
+    layout->set_text(msg);
+    layout->get_pixel_size(text_width,text_height);
+    //if( logo_mid == south )
+    //  logo_mid = south - text_height/2;
+    cr->move_to(west-text_width-0.025*(west-east),south-text_height-0.025*(south-north));
+    layout->add_to_cairo_context(cr);
+    cr->set_source_rgba(1.0,1.0,1.0,0.9);
+    cr->fill();
+    // NOTE: If you want to add an outline, uncomment these lines and comment the line above.
+    //cr->fill_preserve();
+    //cr->set_source_rgba(0.0,0.0,0.0,0.2);
+    //cr->set_line_width(1.0);
+    //cr->stroke();
+
+    return true;
 }
 
 bool SimCHCG::on_timeout() {
-    // force our program to redraw everything
-    auto win = get_window();
-    if (win) {
-        //Gdk::Rectangle r(0, 0, get_allocation().get_width(),
-        //        get_allocation().get_height());
-        //win->invalidate_rect(r, false);
-    }
+    worker_.signal_next_generation();
     return true;
 }
