@@ -16,16 +16,9 @@ typed_value<bool> *value(bool *v) {
 
 }}
 
-
 #include <iostream>
 #include <string>
 #include <exception>
-
-int on_cmd(const Glib::RefPtr<Gio::ApplicationCommandLine> &,
-  Glib::RefPtr<Gtk::Application> &app) {
-    app->activate();
-    return 0;
-}
 
 bool on_key(GdkEventKey* event, Gtk::Window *win) {
 	if(event->keyval == GDK_KEY_Escape) {
@@ -34,12 +27,6 @@ bool on_key(GdkEventKey* event, Gtk::Window *win) {
 	}
 	return true;
 }
-
-bool on_touch(GdkEventTouch* event, Gtk::Window *win) {
-  std::cerr << "====TOUCHED====\n";
-  return true;
-}
-
 
 // use X-Macros to specify argument variables
 struct arg_t {
@@ -56,7 +43,10 @@ int main(int argc, char** argv) {
     auto app = Gtk::Application::create(argc, argv, "ht.cartwrig.simchcg",
    		Gio::APPLICATION_HANDLES_COMMAND_LINE);
     app->signal_command_line().connect(
-      sigc::bind(sigc::ptr_fun(on_cmd), app), false);
+        [&](const Glib::RefPtr<Gio::ApplicationCommandLine> &) -> int {
+            app->activate();
+            return 0;
+        }, false);
 
     po::options_description desc{"Allowed Options"};
     arg_t arg;
@@ -76,12 +66,9 @@ int main(int argc, char** argv) {
         win.fullscreen();
     }
 
-    win.add_events(Gdk::KEY_PRESS_MASK | Gdk::TOUCH_MASK);
+    win.add_events(Gdk::KEY_PRESS_MASK);
     win.signal_key_press_event().connect(
         sigc::bind(sigc::ptr_fun(&on_key), &win), false);
-
-    win.signal_touch_event().connect(
-        sigc::bind(sigc::ptr_fun(&on_touch), &win), false);
 
     if(arg.help) {
         std::cerr << "Usage:\n  " << arg.run_name << " [ options ]\n";
@@ -118,7 +105,6 @@ arg_t process_command_line(po::options_description *opt_desc, int argc, char** a
     #   include "main.xmh"
     #undef XM
         ;
-
 
     po::store(po::command_line_parser(argc, argv).options(*opt_desc).run(), vm);
     po::notify(vm);

@@ -18,9 +18,15 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
     grid_width_{width}, grid_height_{height}, mu_(mu),
     worker_{width,height,mu,delay}
 {
-    Glib::signal_timeout().connect(sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
+    //Glib::signal_timeout().connect(sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
+    
+    Glib::signal_timeout().connect([&]() -> bool {
+        this->worker_.signal_next_generation(); return true;
+        }, 1000.0/OUR_FRAME_RATE );
 
     signal_queue_draw().connect(sigc::mem_fun(*this, &SimCHCG::queue_draw));
+
+    add_events(Gdk::POINTER_MOTION_MASK|Gdk::BUTTON_PRESS_MASK);
 
     try {
         logo_ = Gdk::Pixbuf::create_from_inline(-1,logo_inline,false);
@@ -43,8 +49,11 @@ void SimCHCG::on_realize() {
     // https://dxr.mozilla.org/mozilla-central/source/widget/gtk/WakeLockListener.cpp
     Gtk::DrawingArea::on_realize();
     auto p = get_window();
-    auto cursor = Gdk::Cursor::create(Gdk::BLANK_CURSOR);
-    p->set_cursor(cursor);
+    //p->set_event_compression(false);
+
+    none_cursor_ = Gdk::Cursor::create(p->get_display(), "none");
+    cell_cursor_  = Gdk::Cursor::create(p->get_display(), "cell");
+    p->set_cursor(none_cursor_);
 
     uint32_t xid = GDK_WINDOW_XID(Glib::unwrap(p));
 
@@ -184,7 +193,61 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     return true;
 }
 
-bool SimCHCG::on_timeout() {
-    worker_.signal_next_generation();
-    return true;
+bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
+    std::tie(lastx_,lasty_) = device_to_cell(button_event->x,button_event->y);
+    std::cerr << "Button Pressed on cell " << lastx_ << "x" << lasty_ << "\n";
+    if(button_event->button != 1) {
+        return false;
+    }
+
+    worker_.toggle_cell(lastx_,lasty_);
+    return false;
+}
+
+// http://stackoverflow.com/a/4609795
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
+bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
+    auto xy = device_to_cell(motion_event->x,motion_event->y);
+    std::cerr << "Pointer Moved to cell " << xy.first << "x" << xy.second << "\n";
+    cursor_timeout_.disconnect();
+    if(gdk_device_get_source(motion_event->device) != GDK_SOURCE_TOUCHSCREEN) {
+        get_window()->set_cursor(cell_cursor_);
+        cursor_timeout_ = Glib::signal_timeout().connect([&]() -> bool {
+            this->get_window()->set_cursor(this->none_cursor_);
+            return false;
+        }, 500);
+    }
+    if(!(motion_event->state & GDK_BUTTON1_MASK)) {
+        lastx_ = xy.first;
+        lasty_ = xy.second;
+        return false;
+    }
+    int dx = xy.first - lastx_;
+    int dy = xy.second - lasty_;
+    if(dx > dy) {
+        int o = sgn(dx);
+        for(int d=o; d != dx; d += o) {
+            int x = lastx_+d;
+            int y = lasty_+(d*dy)/dx;
+            worker_.toggle_cell(x,y);
+        }
+    } else {
+        int o = sgn(dy);
+        for(int d=o; d != dy; d += o) {
+            int y = lasty_+d;
+            int x = lastx_+(d*dx)/dy;
+            worker_.toggle_cell(x,y);
+        }
+    }
+    lastx_ = xy.first;
+    lasty_ = xy.second;
+    worker_.toggle_cell(lastx_,lasty_);
+    return false;
+}
+
+std::pair<int,int> SimCHCG::device_to_cell(int x, int y) {
+    return {(x-cairo_xoffset_)/cairo_scale_,(y-cairo_yoffset_)/cairo_scale_};
 }

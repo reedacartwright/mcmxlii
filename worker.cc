@@ -34,13 +34,15 @@ const double mutation[128] = {
 
 void Worker::do_work(SimCHCG* caller)
 {
-    static_assert(num_alleles <= 256, "Too many colors.");
+    static_assert(num_alleles < 256, "Too many colors.");
     go = true;
     next_generation = false;
     gen_ = 0;
     sleep(delay_);
 
     while(go) {
+        apply_toggles();
+
         Glib::Threads::RWLock::ReaderLock lock{data_lock_};
         //boost::timer::auto_cpu_timer measure_speed(std::cerr,  "do_work: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
         const pop_t &a = *pop_a_.get();
@@ -49,8 +51,12 @@ void Worker::do_work(SimCHCG* caller)
         int m = static_cast<int>(rand_exp(rand,mu_));
         for(int y=0;y<height_;++y) {
             for(int x=0;x<width_;++x) {
-                double w, weight = rand_exp(rand, a[x+y*width_].fitness);
                 int pos = x+y*width_;
+                if((a[pos].type & 0xFF) == null_allele) {
+                    continue; // cell is null
+                }
+
+                double w, weight = rand_exp(rand, a[pos].fitness);
                 if(x > 0 && (w = rand_exp(rand, a[(x-1)+y*width_].fitness)) < weight ) {
                     weight = w;
                     b[pos] = a[(x-1)+y*width_];
@@ -126,4 +132,24 @@ void Worker::signal_next_generation() {
     Glib::Threads::Mutex::Lock lock{sync_mutex_};
     next_generation = true;
     sync_.signal();
+}
+
+void Worker::toggle_cell(int x, int y) {
+    assert(0 <= x < width_ && 0 <= y < height_);
+    Glib::Threads::Mutex::Lock lock{toggle_mutex_};
+    std::pair<int,int> p{x,y};
+    if(std::find(toggle_list_.rbegin(),toggle_list_.rend(),p) == toggle_list_.rend()) { 
+        toggle_list_.emplace_back(p);
+    }
+}
+
+void Worker::apply_toggles() {
+    Glib::Threads::Mutex::Lock lock{toggle_mutex_};
+    pop_t &a = *pop_a_.get();
+
+    while(!toggle_list_.empty()) {
+        auto xy = toggle_list_.front();
+        a[xy.first+xy.second*width_].toggle();
+        toggle_list_.pop_front();
+    }
 }

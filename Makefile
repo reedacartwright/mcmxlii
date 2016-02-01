@@ -32,7 +32,7 @@ main.o: main.cc simchcg.h worker.h xorshift64.h xm.h main.xmh
 simchcg.o: simchcg.cc simchcg.h worker.h xorshift64.h logo.inl
 	$(CXX) -c $(CXXFLAGS) $(GFLAGS) $(DBUSFLAGS) simchcg.cc
 
-worker.o: worker.cc worker.h xorshift64.h
+worker.o: worker.cc simchcg.h worker.h xorshift64.h rexp.h
 	$(CXX) -c $(CXXFLAGS) $(GFLAGS) $(DBUSFLAGS) worker.cc
 
 rexp.o: rexp.cc rexp.h
@@ -50,17 +50,17 @@ clean:
 run: simchcg
 	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "" -s "$(SCALE)"
 
-runbig: simchcg
-	./simchcg -f -w "600" -h "337" -m "$(MU)" -t "" -s "$(SCALE)"
+big: simchcg
+	./simchcg -f -w "18" -h "10" -m 1e-3 -t "" -s "$(SCALE)"
 
 display: simchcg
 	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "$$DISPLAYMSG" -s "$(SCALE)"
 
-video:
+video: simchcg
 	#./simchcg -w 348 -h 261 --win-width=1392 --win-height=1044 -t ""
 	#./simchcg -w 200 -h 150 --win-width=800 --win-height=600 -t "" --delay 5
 	#./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 10 # this one was used for class
 	./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 1
 
-runtest:
-	./simchcg -w 400 -h 400 -m 1e-5 --win-width=600 --win-height=400 -t "" --delay 1
+runtest: simchcg
+	./simchcg -w 10 -h 10 -m 1e-3 --win-width=600 --win-height=400 -t "" --delay 1

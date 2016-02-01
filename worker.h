@@ -76,24 +76,39 @@ constexpr color_rgb col_set[] = {
   {0.3803921568627451,0.2039215686274510,0.0666666666666667,1.0000000000000000},
   {0.3764705882352941,0.3686274509803922,0.1215686274509804,1.0000000000000000},
   {0.3607843137254902,0.2078431372549020,0.2862745098039216,1.0000000000000000},
-  {0.2352941176470588,0.2352941176470588,0.2352941176470588,1.0000000000000000}
+  {0.2352941176470588,0.2352941176470588,0.2352941176470588,1.0000000000000000},
+
+  /* black for null cells */
+  {0,0,0,1.0000000000000000}
 };
-constexpr size_t num_alleles = sizeof(col_set)/sizeof(color_rgb);
+constexpr size_t num_colors = sizeof(col_set)/sizeof(color_rgb);
+constexpr size_t num_alleles = num_colors-1;
+constexpr size_t null_allele = num_colors-1;
 
 union cell {
-  cell() {
-    // Get the color of the parent
-    fitness = 1.0;
-    constexpr uint64_t color = 10;
-    static_assert(color < num_alleles, "Default color is invalid.");
-    type = (type & 0xFFFFFFFFFFFFFF00) | color;
-  };
-  double fitness;
-  uint64_t type;
+    cell() {
+        fitness = 1.0;
+        constexpr uint64_t color = 10;
+        static_assert(color < num_alleles, "Default color is invalid.");
+        type = (type & 0xFFFFFFFFFFFFFF00) | color;
+    };
+    double fitness;
+    uint64_t type;
 
-  bool operator<(cell other) {
+    void toggle() {
+        static_assert(null_allele < num_colors && null_allele < 256, "Null allele is invalid.");
+        
+        if((type & 0xFF) == null_allele) {
+            type = (type & 0xFFFFFFFFFFFFFF00);
+        } else {
+            fitness = DBL_MIN;
+            type = (type & 0xFFFFFFFFFFFFFF00) | null_allele;
+        }
+    }
+
+    bool operator<(cell other) {
     return fitness < other.fitness;
-  }
+    }
 };
 
 typedef std::vector<cell> pop_t;
@@ -101,42 +116,49 @@ typedef std::vector<cell> pop_t;
 class Worker
 {
 public:
-  Worker(int width, int height, double mu, int delay=0);
+    Worker(int width, int height, double mu, int delay=0);
 
-  // Thread function.
-  void do_work(SimCHCG* caller);
+    // Thread function.
+    void do_work(SimCHCG* caller);
 
-  std::pair<pop_t,unsigned long long> get_data() const;
+    std::pair<pop_t,unsigned long long> get_data() const;
 
-  void swap_buffers();
+    void swap_buffers();
 
-  void stop();
+    void stop();
 
-  // Synchronizes access to member data.
-  void signal_next_generation();
+    // Synchronizes access to member data.
+    void signal_next_generation();
+
+    void toggle_cell(int x, int y);
+
+protected:
+    void apply_toggles();
 
 private:
-  Glib::Timer timer_;
+    Glib::Timer timer_;
 
-  // Data used by both GUI thread and worker thread.
-  std::atomic<bool> go;
+    // Data used by both GUI thread and worker thread.
+    std::atomic<bool> go;
 
-  int width_;
-  int height_;
-  double mu_;
-  unsigned long long gen_;
-  int delay_;
+    int width_;
+    int height_;
+    double mu_;
+    unsigned long long gen_;
+    int delay_;
 
-  std::unique_ptr<pop_t> pop_a_;
-  std::unique_ptr<pop_t> pop_b_;
+    std::unique_ptr<pop_t> pop_a_;
+    std::unique_ptr<pop_t> pop_b_;
 
-  xorshift64 rand;
+    xorshift64 rand;
 
-  Glib::Threads::Cond sync_;
-  Glib::Threads::Mutex sync_mutex_;
-  bool next_generation{false};
+    Glib::Threads::Cond sync_;
+    Glib::Threads::Mutex sync_mutex_, toggle_mutex_;
+    bool next_generation{false};
 
-  mutable Glib::Threads::RWLock data_lock_;
+    mutable Glib::Threads::RWLock data_lock_;
+
+    std::list<std::pair<int,int>> toggle_list_;
 
 };
 

@@ -32,11 +32,10 @@ protected:
     virtual void on_realize() override;
     virtual void on_unrealize() override;
     virtual void on_size_allocate(Gtk::Allocation& allocation) override;
-
-    bool on_timeout();
-
-    void on_queue_draw_cells();
-
+    
+    virtual bool on_button_press_event(GdkEventButton* button_event) override;
+    virtual bool on_motion_notify_event(GdkEventMotion* motion_event) override;
+    
     int grid_width_;
     int grid_height_;
     double mu_;
@@ -47,7 +46,12 @@ protected:
     double cairo_xoffset_;
     double cairo_yoffset_;
 
+    std::pair<int,int> device_to_cell(int x, int y);
+    int lastx_{-1}, lasty_{-1};
+
     Glib::RefPtr<Gdk::Pixbuf> logo_;
+    Glib::RefPtr<Gdk::Cursor> none_cursor_, cell_cursor_;
+    sigc::connection cursor_timeout_;
 
     Worker worker_;
     Glib::Threads::Thread* worker_thread_{nullptr};
