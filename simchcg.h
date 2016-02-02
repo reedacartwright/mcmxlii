@@ -59,6 +59,8 @@ protected:
     Worker worker_;
     Glib::Threads::Thread* worker_thread_{nullptr};
 
+    Cairo::RefPtr< Cairo::Region > clear_box_;
+
     signal_queue_draw_t signal_queue_draw_;
 };
 

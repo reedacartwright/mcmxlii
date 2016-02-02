@@ -88,20 +88,10 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    //Gtk::Overlay overlay;
-
     SimCHCG s(arg.width,arg.height,arg.mu,arg.delay,arg.fullscreen);
     s.name(arg.text.c_str());
     s.name_scale(arg.text_scale);
-    //overlay.add(s);
     win.add(s);
-
-    //Gtk::Button button_clear_{"Clear"};
-    //button_clear_.property_halign() = Gtk::ALIGN_CENTER;
-    //button_clear_.property_valign() = Gtk::ALIGN_CENTER;
-
-    //overlay.add_overlay(button_clear_);
-    //button_clear_.set_opacity(0.25);
 
     win.show_all();
     return app->run(win);

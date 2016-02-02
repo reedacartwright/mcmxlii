@@ -36,6 +36,8 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay, bool fullscreen) :
         /* do nothing */
     }
 
+    clear_box_ = Cairo::Region::create();
+
     worker_thread_ = Glib::Threads::Thread::create([&]{
         worker_.do_work(this);
     });
@@ -153,7 +155,7 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 
     cr->set_antialias(Cairo::ANTIALIAS_GRAY);
     auto layout = create_pango_layout(name_.c_str());
-    int text_width, text_height;
+    int text_x, text_y, text_width, text_height;
 
     font.set_family("TeX Gyre Adventor");
     font.set_size(name_scale_*48*PANGO_SCALE);
@@ -191,18 +193,48 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     //cr->set_line_width(1.0);
     //cr->stroke();
 
+    font.set_family("Font Awesome");
+    font.set_size(20*PANGO_SCALE);
+    layout->set_font_description(font);
+
+    if(worker_.has_nulls()) {
+        layout->set_text(u8"\uf26c");
+        layout->get_pixel_size(text_width,text_height);
+        text_x = west-text_width-0.025*(west-east);
+        text_y = north+0.025*(south-north);
+        cr->move_to(text_x,text_y);
+        layout->add_to_cairo_context(cr);
+        cr->set_source_rgba(1.0,1.0,1.0,0.9);
+        cr->fill();
+        clear_box_ = Cairo::Region::create({text_x,text_y,text_width,text_height});
+    } else if(!clear_box_->empty()) {
+        clear_box_ = Cairo::Region::create();
+    }
+
+    // cr->rectangle(clear_rect.x,clear_rect.y,clear_rect.width,clear_rect.height);
+    // cr->set_source_rgba(1.0,1.0,1.0,0.3);
+    // cr->fill_preserve();
+    // cr->set_source_rgba(1.0,1.0,1.0,0.9);
+    // cr->set_line_width(1.0);
+    // cr->stroke();
+
     return true;
 }
 
 bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
+    if(button_event->button != 1) {
+        return false;
+    }
+    if(clear_box_->contains_point(button_event->x,button_event->y)) {
+        worker_.do_clear_nulls();
+        return false;
+    }
     int x = button_event->x;
     int y = button_event->y;
     if(!device_to_cell(&x,&y))
         return false;
     //std::cerr << "Button Pressed on cell " << lastx_ << "x" << lasty_ << "\n";
-    if(button_event->button != 1) {
-        return false;
-    }
+
     worker_.toggle_cell(x,y);
     lastx_ = x;
     lasty_ = y;
@@ -277,7 +309,7 @@ bool SimCHCG::device_to_cell(int *x, int *y) {
 
 bool SimCHCG::on_key_press_event(GdkEventKey* key_event) {
     if(key_event->keyval == GDK_KEY_F5) {
-        worker_.do_clear_toggles();
+        worker_.do_clear_nulls();
         return false;
     }
     return false;

@@ -135,9 +135,9 @@ void Worker::do_next_generation() {
     sync_.signal();
 }
 
-void Worker::do_clear_toggles() {
+void Worker::do_clear_nulls() {
     Glib::Threads::Mutex::Lock lock{toggle_mutex_};
-    toggle_clear_all_ = true;
+    clear_all_nulls_ = true;
 }
 
 void Worker::toggle_cell(int x, int y) {
@@ -149,21 +149,29 @@ void Worker::toggle_cell(int x, int y) {
     }
 }
 
+bool Worker::has_nulls() {
+    Glib::Threads::Mutex::Lock lock{toggle_mutex_};
+    return has_nulls_;    
+}
+
 void Worker::apply_toggles() {
     Glib::Threads::Mutex::Lock lock{toggle_mutex_};
     pop_t &a = *pop_a_.get();
 
-    if(toggle_clear_all_) {
+    if(clear_all_nulls_) {
+        if(!has_nulls_)
+            return;
         for(auto && aa : a) {
             if(aa.is_null()) {
                 aa.toggle_off();
             }
         }
         toggle_list_.clear();
-        toggle_clear_all_ = false;
+        has_nulls_ = clear_all_nulls_ = false;
         return;
     }
-
+    if(!toggle_list_.empty())
+        has_nulls_ = true;
     while(!toggle_list_.empty()) {
         auto xy = toggle_list_.front();
         assert(0 <= xy.first < width_ && 0 <= xy.second < height_);

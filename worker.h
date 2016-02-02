@@ -139,9 +139,11 @@ public:
 
     // Synchronizes access to member data.
     void do_next_generation();
-    void do_clear_toggles();
+    void do_clear_nulls();
 
     void toggle_cell(int x, int y);
+
+    bool has_nulls();
 
 protected:
     void apply_toggles();
@@ -166,7 +168,8 @@ private:
     Glib::Threads::Cond sync_;
     Glib::Threads::Mutex sync_mutex_, toggle_mutex_;
     bool next_generation{false};
-    bool toggle_clear_all_{false};
+    bool clear_all_nulls_{false};
+    bool has_nulls_{false};
 
     mutable Glib::Threads::RWLock data_lock_;
 
