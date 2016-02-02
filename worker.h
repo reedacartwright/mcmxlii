@@ -79,10 +79,11 @@ constexpr color_rgb col_set[] = {
   {0.2352941176470588,0.2352941176470588,0.2352941176470588,1.0000000000000000},
 
   /* black for null cells */
+  {0,0,0,1.0000000000000000},
   {0,0,0,1.0000000000000000}
 };
 constexpr size_t num_colors = sizeof(col_set)/sizeof(color_rgb);
-constexpr size_t num_alleles = num_colors-1;
+constexpr size_t num_alleles = num_colors-2;
 constexpr size_t null_allele = num_colors-1;
 
 union cell {
@@ -99,7 +100,7 @@ union cell {
         static_assert(null_allele < num_colors && null_allele < 256, "Null allele is invalid.");
         
         if((type & 0xFF) == null_allele) {
-            type = (type & 0xFFFFFFFFFFFFFF00);
+            type = (type & 0xFFFFFFFFFFFFFF00) | (null_allele-1);
         } else {
             fitness = DBL_MIN;
             type = (type & 0xFFFFFFFFFFFFFF00) | null_allele;

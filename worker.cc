@@ -1,9 +1,10 @@
 #include "worker.h"
 #include "simchcg.h"
 #include "rexp.h"
-#include <glibmm/timer.h>
 
+#include <glibmm/timer.h>
 #include <iostream>
+#include <cassert>
 
 Worker::Worker(int width, int height, double mu,int delay) :
   go{true},
@@ -41,9 +42,8 @@ void Worker::do_work(SimCHCG* caller)
     sleep(delay_);
 
     while(go) {
-        apply_toggles();
-
         Glib::Threads::RWLock::ReaderLock lock{data_lock_};
+
         //boost::timer::auto_cpu_timer measure_speed(std::cerr,  "do_work: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
         const pop_t &a = *pop_a_.get();
         pop_t &b = *pop_b_.get();
@@ -122,6 +122,7 @@ void Worker::swap_buffers() {
     Glib::Threads::RWLock::WriterLock lock{data_lock_};
     gen_ += 1;
     std::swap(pop_a_,pop_b_);
+    apply_toggles();
     char buf[128];
     std::sprintf(buf, "%0.2fs: Generation %llu done.\n", timer_.elapsed(),gen_);
     std::cout << buf;
@@ -149,6 +150,7 @@ void Worker::apply_toggles() {
 
     while(!toggle_list_.empty()) {
         auto xy = toggle_list_.front();
+        assert(0 <= xy.first < width_ && 0 <= xy.second < height_);
         a[xy.first+xy.second*width_].toggle();
         toggle_list_.pop_front();
     }

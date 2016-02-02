@@ -13,7 +13,7 @@ export DISPLAYMSG
 ########################
 
 
-CXXFLAGS += -std=c++11 -g -O3 -march=native -Wno-deprecated-declarations
+CXXFLAGS += -std=c++11 -g -O0 -march=native -Wno-deprecated-declarations
 LDFLAGS += -lboost_program_options -lboost_filesystem -lboost_system -lboost_timer
 
 GLIBS=$(shell pkg-config --libs gtkmm-3.0)
@@ -51,10 +51,13 @@ run: simchcg
 	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "" -s "$(SCALE)"
 
 big: simchcg
-	./simchcg -f -w "18" -h "10" -m 1e-3 -t "" -s "$(SCALE)"
+	./simchcg -f -w "18" -h "10" -m 1e-3 -t "" -s "$(SCALE)" --win-width=800 --win-height=800
 
 display: simchcg
 	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "$$DISPLAYMSG" -s "$(SCALE)"
+
+touchdisplay: simchcg
+	./simchcg -f -w "200" -h "112" -m "2e-5" -t "$$DISPLAYMSG" -s "$(SCALE)"
 
 video: simchcg
 	#./simchcg -w 348 -h 261 --win-width=1392 --win-height=1044 -t ""
@@ -63,4 +66,4 @@ video: simchcg
 	./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 1
 
 runtest: simchcg
-	./simchcg -w 10 -h 10 -m 1e-3 --win-width=600 --win-height=400 -t "" --delay 1
+	./simchcg -w 200 -h 200 -m 1e-5 --win-width=800 --win-height=800 -t "" --delay 1

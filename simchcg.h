@@ -11,7 +11,7 @@
 class SimCHCG : public Gtk::DrawingArea
 {
 public:
-    SimCHCG(int width, int height, double mu, int delay);
+    SimCHCG(int width, int height, double mu, int delay, bool fullscreen);
     virtual ~SimCHCG();
 
     void name(const char* n) {
@@ -32,13 +32,15 @@ protected:
     virtual void on_realize() override;
     virtual void on_unrealize() override;
     virtual void on_size_allocate(Gtk::Allocation& allocation) override;
-    
+
     virtual bool on_button_press_event(GdkEventButton* button_event) override;
     virtual bool on_motion_notify_event(GdkEventMotion* motion_event) override;
-    
-    int grid_width_;
-    int grid_height_;
+
+    int device_width_, device_height_;
+    int grid_width_, grid_height_;
     double mu_;
+    bool fullscreen_;
+
     std::string name_{"Human and Comparative Genomics Laboratory"};
     double name_scale_{1.0};
 

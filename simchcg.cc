@@ -14,9 +14,10 @@
 
 #define OUR_FRAME_RATE 15
 
-SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
+SimCHCG::SimCHCG(int width, int height, double mu, int delay, bool fullscreen) :
     grid_width_{width}, grid_height_{height}, mu_(mu),
-    worker_{width,height,mu,delay}
+    worker_{width,height,mu,delay},
+    fullscreen_{fullscreen}
 {
     //Glib::signal_timeout().connect(sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
     
@@ -49,12 +50,11 @@ void SimCHCG::on_realize() {
     // https://dxr.mozilla.org/mozilla-central/source/widget/gtk/WakeLockListener.cpp
     Gtk::DrawingArea::on_realize();
     auto p = get_window();
-    //p->set_event_compression(false);
-
+ 
     none_cursor_ = Gdk::Cursor::create(p->get_display(), "none");
     cell_cursor_  = Gdk::Cursor::create(p->get_display(), "cell");
     p->set_cursor(none_cursor_);
-
+ 
     uint32_t xid = GDK_WINDOW_XID(Glib::unwrap(p));
 
     DBusConnection* connection = dbus_bus_get(DBUS_BUS_SESSION, nullptr);
@@ -89,22 +89,22 @@ void SimCHCG::on_unrealize() {
 void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
     Gtk::DrawingArea::on_size_allocate(allocation);
 
-    const int width = allocation.get_width();
-    const int height = allocation.get_height();
+    device_width_ = allocation.get_width();
+    device_height_ = allocation.get_height();
 
-    double w = 1.0*width/grid_width_;
-    double h = 1.0*height/grid_height_;
+    double w = 1.0*device_width_/grid_width_;
+    double h = 1.0*device_height_/grid_height_;
 
     if(w <= h) {
         // width is the limiting space
-        double size = 1.0*grid_height_*width/grid_width_;
+        double size = 1.0*grid_height_*device_width_/grid_width_;
         cairo_xoffset_ = 0;
-        cairo_yoffset_ = (height-size)/2;
+        cairo_yoffset_ = (device_height_-size)/2;
         cairo_scale_ = w; 
     } else {
         // height is the limiting space
-        double size = 1.0*grid_width_*height/grid_height_;
-        cairo_xoffset_ = (width-size)/2;
+        double size = 1.0*grid_width_*device_height_/grid_height_;
+        cairo_xoffset_ = (device_width_-size)/2;
         cairo_yoffset_ = 0;
         cairo_scale_ = h;
     }
@@ -194,8 +194,12 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 }
 
 bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
-    std::tie(lastx_,lasty_) = device_to_cell(button_event->x,button_event->y);
-    std::cerr << "Button Pressed on cell " << lastx_ << "x" << lasty_ << "\n";
+    auto xy = device_to_cell(button_event->x,button_event->y);
+    if(xy.first == -1 || xy.second == -1)
+        return false;
+    lastx_ = xy.first;
+    lasty_ = xy.second;
+    //std::cerr << "Button Pressed on cell " << lastx_ << "x" << lasty_ << "\n";
     if(button_event->button != 1) {
         return false;
     }
@@ -211,7 +215,9 @@ template <typename T> int sgn(T val) {
 
 bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
     auto xy = device_to_cell(motion_event->x,motion_event->y);
-    std::cerr << "Pointer Moved to cell " << xy.first << "x" << xy.second << "\n";
+    if(xy.first == -1 || xy.second == -1)
+        return false;    
+    //std::cerr << "Pointer Moved to cell " << xy.first << "x" << xy.second << "\n";
     cursor_timeout_.disconnect();
     if(gdk_device_get_source(motion_event->device) != GDK_SOURCE_TOUCHSCREEN) {
         get_window()->set_cursor(cell_cursor_);
@@ -227,7 +233,10 @@ bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
     }
     int dx = xy.first - lastx_;
     int dy = xy.second - lasty_;
-    if(dx > dy) {
+    if(dx == 0 && dy == 0) {
+        return false;
+    }
+    if(abs(dx) > abs(dy)) {
         int o = sgn(dx);
         for(int d=o; d != dx; d += o) {
             int x = lastx_+d;
@@ -249,5 +258,7 @@ bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
 }
 
 std::pair<int,int> SimCHCG::device_to_cell(int x, int y) {
+    if(x < 0 || x >= device_width_ || y < 0 || y >= device_height_)
+        return {-1,-1};
     return {(x-cairo_xoffset_)/cairo_scale_,(y-cairo_yoffset_)/cairo_scale_};
 }

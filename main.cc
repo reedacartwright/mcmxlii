@@ -57,18 +57,24 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    Gtk::Window win{};
+    Gtk::ApplicationWindow win{};
     win.set_title("Human and Comparative Genomics Laboratory");
     win.set_default_size(arg.win_width,arg.win_height);
     win.set_border_width(0);
 
-    if(arg.fullscreen) {
-        win.fullscreen();
-    }
-
     win.add_events(Gdk::KEY_PRESS_MASK);
     win.signal_key_press_event().connect(
         sigc::bind(sigc::ptr_fun(&on_key), &win), false);
+
+    if(arg.fullscreen) {
+        auto m = win.get_display()->get_device_manager()->get_client_pointer();
+        auto s = win.get_screen();
+        int mx,my;
+        m->get_position(s,mx,my);
+        win.set_default_size(1,1);
+        win.move(mx,my);
+        win.fullscreen();
+    }
 
     if(arg.help) {
         std::cerr << "Usage:\n  " << arg.run_name << " [ options ]\n";
@@ -81,7 +87,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    SimCHCG s(arg.width,arg.height,arg.mu,arg.delay);
+    SimCHCG s(arg.width,arg.height,arg.mu,arg.delay,arg.fullscreen);
     s.name(arg.text.c_str());
     s.name_scale(arg.text_scale);
     win.add(s);
