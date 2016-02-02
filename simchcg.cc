@@ -22,12 +22,13 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay, bool fullscreen) :
     //Glib::signal_timeout().connect(sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
     
     Glib::signal_timeout().connect([&]() -> bool {
-        this->worker_.signal_next_generation(); return true;
+        this->worker_.do_next_generation(); return true;
         }, 1000.0/OUR_FRAME_RATE );
 
     signal_queue_draw().connect(sigc::mem_fun(*this, &SimCHCG::queue_draw));
 
-    add_events(Gdk::POINTER_MOTION_MASK|Gdk::BUTTON_PRESS_MASK);
+    add_events(Gdk::POINTER_MOTION_MASK|Gdk::BUTTON_PRESS_MASK|Gdk::KEY_PRESS_MASK);
+    set_can_focus();
 
     try {
         logo_ = Gdk::Pixbuf::create_from_inline(-1,logo_inline,false);
@@ -99,12 +100,12 @@ void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
         // width is the limiting space
         double size = 1.0*grid_height_*device_width_/grid_width_;
         cairo_xoffset_ = 0;
-        cairo_yoffset_ = (device_height_-size)/2;
+        cairo_yoffset_ = (device_height_-size)/2.0;
         cairo_scale_ = w; 
     } else {
         // height is the limiting space
         double size = 1.0*grid_width_*device_height_/grid_height_;
-        cairo_xoffset_ = (device_width_-size)/2;
+        cairo_xoffset_ = (device_width_-size)/2.0;
         cairo_yoffset_ = 0;
         cairo_scale_ = h;
     }
@@ -194,17 +195,18 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 }
 
 bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
-    auto xy = device_to_cell(button_event->x,button_event->y);
-    if(xy.first == -1 || xy.second == -1)
+    int x = button_event->x;
+    int y = button_event->y;
+    if(!device_to_cell(&x,&y))
         return false;
-    lastx_ = xy.first;
-    lasty_ = xy.second;
     //std::cerr << "Button Pressed on cell " << lastx_ << "x" << lasty_ << "\n";
     if(button_event->button != 1) {
         return false;
     }
+    worker_.toggle_cell(x,y);
+    lastx_ = x;
+    lasty_ = y;
 
-    worker_.toggle_cell(lastx_,lasty_);
     return false;
 }
 
@@ -214,9 +216,6 @@ template <typename T> int sgn(T val) {
 }
 
 bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
-    auto xy = device_to_cell(motion_event->x,motion_event->y);
-    if(xy.first == -1 || xy.second == -1)
-        return false;    
     //std::cerr << "Pointer Moved to cell " << xy.first << "x" << xy.second << "\n";
     cursor_timeout_.disconnect();
     if(gdk_device_get_source(motion_event->device) != GDK_SOURCE_TOUCHSCREEN) {
@@ -226,39 +225,61 @@ bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
             return false;
         }, 500);
     }
+    int x = motion_event->x;
+    int y = motion_event->y;
+    if(!device_to_cell(&x,&y))
+        return false;
     if(!(motion_event->state & GDK_BUTTON1_MASK)) {
-        lastx_ = xy.first;
-        lasty_ = xy.second;
+        lastx_ = x;
+        lasty_ = y;
         return false;
     }
-    int dx = xy.first - lastx_;
-    int dy = xy.second - lasty_;
+    int dx = x - lastx_;
+    int dy = y - lasty_;
     if(dx == 0 && dy == 0) {
         return false;
     }
     if(abs(dx) > abs(dy)) {
         int o = sgn(dx);
         for(int d=o; d != dx; d += o) {
-            int x = lastx_+d;
-            int y = lasty_+(d*dy)/dx;
-            worker_.toggle_cell(x,y);
+            int nx = lastx_+d;
+            int ny = lasty_+(d*dy)/dx;
+            worker_.toggle_cell(nx,ny);
         }
     } else {
         int o = sgn(dy);
         for(int d=o; d != dy; d += o) {
-            int y = lasty_+d;
-            int x = lastx_+(d*dx)/dy;
-            worker_.toggle_cell(x,y);
+            int ny = lasty_+d;
+            int nx = lastx_+(d*dx)/dy;
+            worker_.toggle_cell(nx,ny);
         }
     }
-    lastx_ = xy.first;
-    lasty_ = xy.second;
-    worker_.toggle_cell(lastx_,lasty_);
+    lastx_ = x;
+    lasty_ = y;
+    worker_.toggle_cell(x,y);
     return false;
 }
 
-std::pair<int,int> SimCHCG::device_to_cell(int x, int y) {
-    if(x < 0 || x >= device_width_ || y < 0 || y >= device_height_)
-        return {-1,-1};
-    return {(x-cairo_xoffset_)/cairo_scale_,(y-cairo_yoffset_)/cairo_scale_};
+bool SimCHCG::device_to_cell(int *x, int *y) {
+    assert(x != nullptr && y != nullptr);
+    int xx = *x;
+    int yy = *y;
+    if(xx < 0 || xx >= device_width_ || yy < 0 || yy >= device_height_)
+        return false;
+    xx = (xx-cairo_xoffset_)/cairo_scale_;
+    yy = (yy-cairo_yoffset_)/cairo_scale_;
+    if(xx < 0 || xx >= grid_width_ || yy < 0 || yy >= grid_width_)
+        return false;
+    *x = xx;
+    *y = yy;
+    return true;
 }
+
+bool SimCHCG::on_key_press_event(GdkEventKey* key_event) {
+    if(key_event->keyval == GDK_KEY_F5) {
+        worker_.do_clear_toggles();
+        return false;
+    }
+    return false;
+};
+

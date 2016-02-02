@@ -35,6 +35,7 @@ protected:
 
     virtual bool on_button_press_event(GdkEventButton* button_event) override;
     virtual bool on_motion_notify_event(GdkEventMotion* motion_event) override;
+    virtual bool on_key_press_event(GdkEventKey* key_event) override;
 
     int device_width_, device_height_;
     int grid_width_, grid_height_;
@@ -48,7 +49,7 @@ protected:
     double cairo_xoffset_;
     double cairo_yoffset_;
 
-    std::pair<int,int> device_to_cell(int x, int y);
+    bool device_to_cell(int *x, int *y);
     int lastx_{-1}, lasty_{-1};
 
     Glib::RefPtr<Gdk::Pixbuf> logo_;

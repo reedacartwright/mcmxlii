@@ -86,6 +86,8 @@ constexpr size_t num_colors = sizeof(col_set)/sizeof(color_rgb);
 constexpr size_t num_alleles = num_colors-2;
 constexpr size_t null_allele = num_colors-1;
 
+static_assert(null_allele < num_colors && null_allele < 256, "Null allele is invalid.");
+
 union cell {
     cell() {
         fitness = 1.0;
@@ -96,19 +98,26 @@ union cell {
     double fitness;
     uint64_t type;
 
+    bool is_null() const {
+        return ((type & 0xFF) == null_allele); 
+    }
+    void toggle_on() {
+        fitness = DBL_MIN;
+        type = (type & 0xFFFFFFFFFFFFFF00) | null_allele;
+    }
+    void toggle_off() {
+        type = (type & 0xFFFFFFFFFFFFFF00) | (null_allele-1);
+    }
     void toggle() {
-        static_assert(null_allele < num_colors && null_allele < 256, "Null allele is invalid.");
-        
-        if((type & 0xFF) == null_allele) {
-            type = (type & 0xFFFFFFFFFFFFFF00) | (null_allele-1);
+        if(is_null()) {
+            toggle_off();
         } else {
-            fitness = DBL_MIN;
-            type = (type & 0xFFFFFFFFFFFFFF00) | null_allele;
+            toggle_on();
         }
     }
 
     bool operator<(cell other) {
-    return fitness < other.fitness;
+        return fitness < other.fitness;
     }
 };
 
@@ -129,7 +138,8 @@ public:
     void stop();
 
     // Synchronizes access to member data.
-    void signal_next_generation();
+    void do_next_generation();
+    void do_clear_toggles();
 
     void toggle_cell(int x, int y);
 
@@ -156,6 +166,7 @@ private:
     Glib::Threads::Cond sync_;
     Glib::Threads::Mutex sync_mutex_, toggle_mutex_;
     bool next_generation{false};
+    bool toggle_clear_all_{false};
 
     mutable Glib::Threads::RWLock data_lock_;
 

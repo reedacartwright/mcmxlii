@@ -19,7 +19,7 @@ Worker::Worker(int width, int height, double mu,int delay) :
 
 void Worker::stop() {
     go = false;
-    signal_next_generation();
+    do_next_generation();
 }
 
 const double mutation[128] = {
@@ -52,7 +52,7 @@ void Worker::do_work(SimCHCG* caller)
         for(int y=0;y<height_;++y) {
             for(int x=0;x<width_;++x) {
                 int pos = x+y*width_;
-                if((a[pos].type & 0xFF) == null_allele) {
+                if(a[pos].is_null()) {
                     continue; // cell is null
                 }
 
@@ -129,10 +129,15 @@ void Worker::swap_buffers() {
     std::cout.flush();
 }
 
-void Worker::signal_next_generation() {
+void Worker::do_next_generation() {
     Glib::Threads::Mutex::Lock lock{sync_mutex_};
     next_generation = true;
     sync_.signal();
+}
+
+void Worker::do_clear_toggles() {
+    Glib::Threads::Mutex::Lock lock{toggle_mutex_};
+    toggle_clear_all_ = true;
 }
 
 void Worker::toggle_cell(int x, int y) {
@@ -147,6 +152,17 @@ void Worker::toggle_cell(int x, int y) {
 void Worker::apply_toggles() {
     Glib::Threads::Mutex::Lock lock{toggle_mutex_};
     pop_t &a = *pop_a_.get();
+
+    if(toggle_clear_all_) {
+        for(auto && aa : a) {
+            if(aa.is_null()) {
+                aa.toggle_off();
+            }
+        }
+        toggle_list_.clear();
+        toggle_clear_all_ = false;
+        return;
+    }
 
     while(!toggle_list_.empty()) {
         auto xy = toggle_list_.front();

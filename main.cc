@@ -23,9 +23,9 @@ typed_value<bool> *value(bool *v) {
 bool on_key(GdkEventKey* event, Gtk::Window *win) {
 	if(event->keyval == GDK_KEY_Escape) {
 		win->hide();
-		return true;
+		return false;
 	}
-	return true;
+	return false;
 }
 
 // use X-Macros to specify argument variables
@@ -63,8 +63,9 @@ int main(int argc, char** argv) {
     win.set_border_width(0);
 
     win.add_events(Gdk::KEY_PRESS_MASK);
-    win.signal_key_press_event().connect(
-        sigc::bind(sigc::ptr_fun(&on_key), &win), false);
+    win.signal_key_press_event().connect([&](GdkEventKey* event) -> bool {
+        return on_key(event,&win);
+    }, true);
 
     if(arg.fullscreen) {
         auto m = win.get_display()->get_device_manager()->get_client_pointer();
@@ -87,12 +88,22 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    //Gtk::Overlay overlay;
+
     SimCHCG s(arg.width,arg.height,arg.mu,arg.delay,arg.fullscreen);
     s.name(arg.text.c_str());
     s.name_scale(arg.text_scale);
+    //overlay.add(s);
     win.add(s);
-    s.show();
 
+    //Gtk::Button button_clear_{"Clear"};
+    //button_clear_.property_halign() = Gtk::ALIGN_CENTER;
+    //button_clear_.property_valign() = Gtk::ALIGN_CENTER;
+
+    //overlay.add_overlay(button_clear_);
+    //button_clear_.set_opacity(0.25);
+
+    win.show_all();
     return app->run(win);
 }
 
