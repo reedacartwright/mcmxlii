@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cassert>
 #include <algorithm>
 #include <cairomm/context.h>
 #include <glibmm/main.h>
@@ -30,13 +31,21 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay, bool fullscreen) :
     add_events(Gdk::POINTER_MOTION_MASK|Gdk::BUTTON_PRESS_MASK|Gdk::KEY_PRESS_MASK);
     set_can_focus();
 
-    try {
-        logo_ = Gdk::Pixbuf::create_from_inline(-1,logo_inline,false);
-    } catch(...) {
-        /* do nothing */
-    }
+    logo_ = Gdk::Pixbuf::create_from_inline(-1,logo_inline,false);
 
     clear_box_ = Cairo::Region::create();
+
+	font_name_.set_weight(Pango::WEIGHT_BOLD);
+    font_name_.set_family("TeX Gyre Adventor");
+    font_name_.set_size(48*PANGO_SCALE);
+
+	font_note_.set_weight(Pango::WEIGHT_BOLD);
+    font_note_.set_family("Source Sans Pro");
+    font_note_.set_size(20*PANGO_SCALE);
+
+	font_icon_.set_weight(Pango::WEIGHT_BOLD);
+    font_icon_.set_family("Font Awesome");
+    font_icon_.set_size(20*PANGO_SCALE);
 
     worker_thread_ = Glib::Threads::Thread::create([&]{
         worker_.do_work(this);
@@ -98,28 +107,23 @@ void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
     double w = 1.0*device_width_/grid_width_;
     double h = 1.0*device_height_/grid_height_;
 
-    if(w <= h) {
-        // width is the limiting space
-        double size = 1.0*grid_height_*device_width_/grid_width_;
-        cairo_xoffset_ = 0;
-        cairo_yoffset_ = (device_height_-size)/2.0;
-        cairo_scale_ = w; 
-    } else {
-        // height is the limiting space
-        double size = 1.0*grid_width_*device_height_/grid_height_;
-        cairo_xoffset_ = (device_width_-size)/2.0;
-        cairo_yoffset_ = 0;
-        cairo_scale_ = h;
-    }
+    cairo_scale_ = std::min(w,h);
+
+    width_ = 1.0*grid_width_*cairo_scale_;
+    height_ = 1.0*grid_height_*cairo_scale_;
+    west_ = (device_width_-width_)/2.0;
+    north_ = (device_height_-height_)/2.0;
+    east_ = west_+width_;
+    south_ = north_ + height_;
 }
 
 bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
     //boost::timer::auto_cpu_timer measure_speed(std::cerr,  "on_draw: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
-
+    
     cr->set_antialias(Cairo::ANTIALIAS_NONE);
     cr->save();
-    cr->translate(cairo_xoffset_,cairo_yoffset_);
+    cr->translate(west_,north_);
     cr->scale(cairo_scale_,cairo_scale_);
     cr->set_source_rgba(0.0,0.0,0.0,1.0);
     cr->paint();
@@ -137,89 +141,65 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
             cr->fill();
         }
     }
-    double east = 0, north = 0, west = grid_width_, south = grid_height_;
-    cr->user_to_device(west,south);
-    cr->user_to_device(east,north);
     cr->restore();
 
-    int logo_top = south, logo_mid = south;
-    if(logo_) {
-        logo_top = south-logo_->get_height()-0.025*(south-north);
-        //logo_mid = south-logo_->get_height()/2;
-        Gdk::Cairo::set_source_pixbuf(cr, logo_, east+0.025*(west-east), logo_top);
-        cr->paint_with_alpha(0.9);
-    }
-
-    Pango::FontDescription font;
-    font.set_weight(Pango::WEIGHT_BOLD);
+    int logo_top = south_, logo_mid = south_;
+    logo_top = south_-logo_->get_height()-0.025*(height_);
+    Gdk::Cairo::set_source_pixbuf(cr, logo_, west_+0.025*(width_), logo_top);
+    cr->paint_with_alpha(0.9);
 
     cr->set_antialias(Cairo::ANTIALIAS_GRAY);
     auto layout = create_pango_layout(name_.c_str());
     int text_x, text_y, text_width, text_height;
+    layout->set_text(name_.c_str());
 
-    font.set_family("TeX Gyre Adventor");
-    font.set_size(name_scale_*48*PANGO_SCALE);
-    layout->set_font_description(font);
+    layout->set_font_description(font_name_);
     layout->set_alignment(Pango::ALIGN_CENTER);
     layout->get_pixel_size(text_width,text_height);  
-    cr->move_to(east+(west-east)/2.0-text_width/2.0, north+(logo_top-north)/2.0-text_height/2.0);
+    cr->move_to(west_+(width_)/2.0-text_width/2.0, north_+(logo_top-north_)/2.0-text_height/2.0);
     layout->add_to_cairo_context(cr);
     cr->set_source_rgba(1.0,1.0,1.0,0.9);
     cr->fill();
-    // NOTE: If you want to add an outline, uncomment these lines and comment the line above.
-    //cr->fill_preserve();
-    //cr->set_source_rgba(0.0,0.0,0.0,0.2);
-    //cr->set_line_width(0.5);
-    //cr->stroke();
 
     char msg[128];
     sprintf(msg,"Generation: %llu", data.second);
-
-    font.set_family("Source Sans Pro");
-    font.set_size(20*PANGO_SCALE);
-    layout->set_font_description(font);
-
+    layout->set_font_description(font_note_);
     layout->set_text(msg);
     layout->get_pixel_size(text_width,text_height);
-    //if( logo_mid == south )
-    //  logo_mid = south - text_height/2;
-    cr->move_to(west-text_width-0.025*(west-east),south-text_height-0.025*(south-north));
+    cr->move_to(east_-text_width-0.025*(width_),south_-text_height-0.025*(height_));
     layout->add_to_cairo_context(cr);
     cr->set_source_rgba(1.0,1.0,1.0,0.9);
     cr->fill();
-    // NOTE: If you want to add an outline, uncomment these lines and comment the line above.
-    //cr->fill_preserve();
-    //cr->set_source_rgba(0.0,0.0,0.0,0.2);
-    //cr->set_line_width(1.0);
-    //cr->stroke();
-
-    font.set_family("Font Awesome");
-    font.set_size(20*PANGO_SCALE);
-    layout->set_font_description(font);
 
     if(worker_.has_nulls()) {
-        layout->set_text(u8"\uf26c");
+	    layout->set_font_description(font_icon_);
+        
+        layout->set_text(u8"\uf12d \uf26c");
         layout->get_pixel_size(text_width,text_height);
-        text_x = west-text_width-0.025*(west-east);
-        text_y = north+0.025*(south-north);
+        text_x = east_-text_width-0.025*(width_);
+        text_y = north_+0.025*(height_);
+        auto r = layout->index_to_pos(1);
         cr->move_to(text_x,text_y);
         layout->add_to_cairo_context(cr);
         cr->set_source_rgba(1.0,1.0,1.0,0.9);
         cr->fill();
-        clear_box_ = Cairo::Region::create({text_x,text_y,text_width,text_height});
+
+        clear_box_ = Cairo::Region::create({
+        	text_x, text_y,
+        	text_width, text_height});
+
     } else if(!clear_box_->empty()) {
         clear_box_ = Cairo::Region::create();
     }
 
-    // cr->rectangle(clear_rect.x,clear_rect.y,clear_rect.width,clear_rect.height);
-    // cr->set_source_rgba(1.0,1.0,1.0,0.3);
-    // cr->fill_preserve();
-    // cr->set_source_rgba(1.0,1.0,1.0,0.9);
-    // cr->set_line_width(1.0);
-    // cr->stroke();
-
     return true;
 }
+
+// NOTE: If you want to add an outline, uncomment these lines and comment the line above.
+//cr->fill_preserve();
+//cr->set_source_rgba(0.0,0.0,0.0,0.2);
+//cr->set_line_width(0.5);
+//cr->stroke();
 
 bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
     if(button_event->button != 1) {
@@ -235,7 +215,7 @@ bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
         return false;
     //std::cerr << "Button Pressed on cell " << lastx_ << "x" << lasty_ << "\n";
 
-    worker_.toggle_cell(x,y);
+    worker_.toggle_cell(x,y,true);
     lastx_ = x;
     lasty_ = y;
 
@@ -276,19 +256,19 @@ bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
         for(int d=o; d != dx; d += o) {
             int nx = lastx_+d;
             int ny = lasty_+(d*dy)/dx;
-            worker_.toggle_cell(nx,ny);
+            worker_.toggle_cell(nx,ny,true);
         }
     } else {
         int o = sgn(dy);
         for(int d=o; d != dy; d += o) {
             int ny = lasty_+d;
             int nx = lastx_+(d*dx)/dy;
-            worker_.toggle_cell(nx,ny);
+            worker_.toggle_cell(nx,ny,true);
         }
     }
     lastx_ = x;
     lasty_ = y;
-    worker_.toggle_cell(x,y);
+    worker_.toggle_cell(x,y,true);
     return false;
 }
 
@@ -296,12 +276,11 @@ bool SimCHCG::device_to_cell(int *x, int *y) {
     assert(x != nullptr && y != nullptr);
     int xx = *x;
     int yy = *y;
-    if(xx < 0 || xx >= device_width_ || yy < 0 || yy >= device_height_)
-        return false;
-    xx = (xx-cairo_xoffset_)/cairo_scale_;
-    yy = (yy-cairo_yoffset_)/cairo_scale_;
-    if(xx < 0 || xx >= grid_width_ || yy < 0 || yy >= grid_width_)
-        return false;
+    if(!(west_ <= xx && xx < east_ && north_ <= yy && yy < south_ )) {
+    	return false;
+    }
+    xx = (xx-west_)/cairo_scale_;
+    yy = (yy-north_)/cairo_scale_;
     *x = xx;
     *y = yy;
     return true;

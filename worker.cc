@@ -7,7 +7,6 @@
 #include <cassert>
 
 Worker::Worker(int width, int height, double mu,int delay) :
-  go{true},
   width_{width}, height_{height}, mu_{mu},
   pop_a_{new pop_t(width*height)},
   pop_b_{new pop_t(width*height)},
@@ -18,7 +17,7 @@ Worker::Worker(int width, int height, double mu,int delay) :
 }
 
 void Worker::stop() {
-    go = false;
+    go_ = false;
     do_next_generation();
 }
 
@@ -36,12 +35,12 @@ const double mutation[128] = {
 void Worker::do_work(SimCHCG* caller)
 {
     static_assert(num_alleles < 256, "Too many colors.");
-    go = true;
+    go_ = true;
     next_generation = false;
     gen_ = 0;
     sleep(delay_);
 
-    while(go) {
+    while(go_) {
         Glib::Threads::RWLock::ReaderLock lock{data_lock_};
 
         //boost::timer::auto_cpu_timer measure_speed(std::cerr,  "do_work: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
@@ -140,13 +139,10 @@ void Worker::do_clear_nulls() {
     clear_all_nulls_ = true;
 }
 
-void Worker::toggle_cell(int x, int y) {
-    assert(0 <= x < width_ && 0 <= y < height_);
+void Worker::toggle_cell(int x, int y, bool on) {
     Glib::Threads::Mutex::Lock lock{toggle_mutex_};
-    std::pair<int,int> p{x,y};
-    if(std::find(toggle_list_.rbegin(),toggle_list_.rend(),p) == toggle_list_.rend()) { 
-        toggle_list_.emplace_back(p);
-    }
+    assert(0 <= x < width_ && 0 <= y < height_);
+    toggle_map_[{x,y}] = on;
 }
 
 bool Worker::has_nulls() {
@@ -166,16 +162,21 @@ void Worker::apply_toggles() {
                 aa.toggle_off();
             }
         }
-        toggle_list_.clear();
+        toggle_map_.clear();
         has_nulls_ = clear_all_nulls_ = false;
         return;
     }
-    if(!toggle_list_.empty())
-        has_nulls_ = true;
-    while(!toggle_list_.empty()) {
-        auto xy = toggle_list_.front();
-        assert(0 <= xy.first < width_ && 0 <= xy.second < height_);
-        a[xy.first+xy.second*width_].toggle();
-        toggle_list_.pop_front();
+    if(!toggle_map_.empty())
+    	 has_nulls_ = true;
+    for(auto && cell : toggle_map_) {
+    	int x = cell.first.first;
+    	int y = cell.first.second;
+    	assert(0 <= x && x < width_ && 0 <= y && y < height_);
+    	if(cell.second) {
+    		a[x+y*width_].toggle_on();
+    	} else {
+    		a[x+y*width_].toggle_off();
+    	}
     }
+    toggle_map_.clear();
 }

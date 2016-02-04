@@ -18,7 +18,7 @@ public:
         name_ = n;
     }
     void name_scale(double n) {
-        name_scale_ = n;
+        font_name_.set_size(n*48*PANGO_SCALE);
     }
 
     typedef sigc::signal<void> signal_queue_draw_t;
@@ -43,11 +43,12 @@ protected:
     bool fullscreen_;
 
     std::string name_{"Human and Comparative Genomics Laboratory"};
-    double name_scale_{1.0};
 
     double cairo_scale_;
-    double cairo_xoffset_;
-    double cairo_yoffset_;
+
+    double width_, height_;
+    double east_, north_, west_, south_;
+
 
     bool device_to_cell(int *x, int *y);
     int lastx_{-1}, lasty_{-1};
@@ -55,6 +56,8 @@ protected:
     Glib::RefPtr<Gdk::Pixbuf> logo_;
     Glib::RefPtr<Gdk::Cursor> none_cursor_, cell_cursor_;
     sigc::connection cursor_timeout_;
+
+	Pango::FontDescription font_name_, font_note_, font_icon_;
 
     Worker worker_;
     Glib::Threads::Thread* worker_thread_{nullptr};

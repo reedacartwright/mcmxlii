@@ -1,7 +1,6 @@
 #include "simchcg.h"
 #include <gtkmm/application.h>
 #include <gtkmm/window.h>
-#include <gtkmm/gesturesingle.h>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>

@@ -141,7 +141,7 @@ public:
     void do_next_generation();
     void do_clear_nulls();
 
-    void toggle_cell(int x, int y);
+    void toggle_cell(int x, int y, bool on);
 
     bool has_nulls();
 
@@ -151,8 +151,7 @@ protected:
 private:
     Glib::Timer timer_;
 
-    // Data used by both GUI thread and worker thread.
-    std::atomic<bool> go;
+    std::atomic<bool> go_{false};
 
     int width_;
     int height_;
@@ -173,7 +172,8 @@ private:
 
     mutable Glib::Threads::RWLock data_lock_;
 
-    std::list<std::pair<int,int>> toggle_list_;
+    typedef std::map<std::pair<int,int>,bool> toggle_map_t;
+    toggle_map_t toggle_map_;
 
 };
 
