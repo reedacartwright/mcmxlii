@@ -15,6 +15,9 @@
 
 #define OUR_FRAME_RATE 15
 
+const char normal_icons[] = u8"\uf12d \uf26c";
+const char active_eraser_icons[] = u8"<span foreground='blue'>\uf12d</span> \uf26c";
+
 SimCHCG::SimCHCG(int width, int height, double mu, int delay, bool fullscreen) :
     grid_width_{width}, grid_height_{height}, mu_(mu),
     worker_{width,height,mu,delay},
@@ -32,8 +35,6 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay, bool fullscreen) :
     set_can_focus();
 
     logo_ = Gdk::Pixbuf::create_from_inline(-1,logo_inline,false);
-
-    clear_box_ = Cairo::Region::create();
 
 	font_name_.set_weight(Pango::WEIGHT_BOLD);
     font_name_.set_family("TeX Gyre Adventor");
@@ -68,7 +69,6 @@ void SimCHCG::on_realize() {
     p->set_cursor(none_cursor_);
  
     uint32_t xid = GDK_WINDOW_XID(Glib::unwrap(p));
-
     DBusConnection* connection = dbus_bus_get(DBUS_BUS_SESSION, nullptr);
     if(connection == nullptr)
         return;
@@ -92,6 +92,8 @@ void SimCHCG::on_realize() {
     dbus_connection_flush(connection);
     dbus_message_unref(message);
     dbus_connection_unref(connection);
+
+    create_our_pango_layouts();
 }
 
 void SimCHCG::on_unrealize() {
@@ -115,6 +117,33 @@ void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
     north_ = (device_height_-height_)/2.0;
     east_ = west_+width_;
     south_ = north_ + height_;
+
+    // Logo Position
+    assert(logo_);
+    int logo_top = south_, logo_mid = south_;
+    logo_top = south_-logo_->get_height()-0.025*(height_);
+    pos_logo_ = { west_+0.025*(width_), logo_top };
+
+    // Text
+    int text_width, text_height;
+    
+    // Name
+    assert(layout_name_);
+    layout_name_->get_pixel_size(text_width,text_height);
+    pos_name_ = {(west_+east_)/2.0-text_width/2.0, north_+(logo_top-north_)/2.0-text_height/2.0};
+
+    // Icons
+    assert(layout_icon_);
+    layout_icon_->get_pixel_size(text_width,text_height);
+    pos_icon_ = {east_-text_width-0.025*width_, north_+0.025*height_};
+
+    box_icon_ = Cairo::Region::create({
+        pos_icon_.first, pos_icon_.second,
+        text_width, text_height});
+}
+
+void SimCHCG::on_screen_changed(const Glib::RefPtr<Gdk::Screen>& previous_screen) {
+    SimCHCG::create_our_pango_layouts();
 }
 
 bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
@@ -143,54 +172,27 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     }
     cr->restore();
 
-    int logo_top = south_, logo_mid = south_;
-    logo_top = south_-logo_->get_height()-0.025*(height_);
-    Gdk::Cairo::set_source_pixbuf(cr, logo_, west_+0.025*(width_), logo_top);
+    cr->set_antialias(Cairo::ANTIALIAS_GRAY);
+    Gdk::Cairo::set_source_pixbuf(cr, logo_, pos_logo_.first, pos_logo_.second);
     cr->paint_with_alpha(0.9);
 
-    cr->set_antialias(Cairo::ANTIALIAS_GRAY);
-    auto layout = create_pango_layout(name_.c_str());
-    int text_x, text_y, text_width, text_height;
-    layout->set_text(name_.c_str());
-
-    layout->set_font_description(font_name_);
-    layout->set_alignment(Pango::ALIGN_CENTER);
-    layout->get_pixel_size(text_width,text_height);  
-    cr->move_to(west_+(width_)/2.0-text_width/2.0, north_+(logo_top-north_)/2.0-text_height/2.0);
-    layout->add_to_cairo_context(cr);
     cr->set_source_rgba(1.0,1.0,1.0,0.9);
-    cr->fill();
-
-    char msg[128];
-    sprintf(msg,"Generation: %llu", data.second);
-    layout->set_font_description(font_note_);
-    layout->set_text(msg);
-    layout->get_pixel_size(text_width,text_height);
-    cr->move_to(east_-text_width-0.025*(width_),south_-text_height-0.025*(height_));
-    layout->add_to_cairo_context(cr);
-    cr->set_source_rgba(1.0,1.0,1.0,0.9);
-    cr->fill();
+    cr->move_to(pos_name_.first, pos_name_.second);
+    layout_name_->show_in_cairo_context(cr);
 
     if(worker_.has_nulls()) {
-	    layout->set_font_description(font_icon_);
-        
-        layout->set_text(u8"\uf12d \uf26c");
-        layout->get_pixel_size(text_width,text_height);
-        text_x = east_-text_width-0.025*(width_);
-        text_y = north_+0.025*(height_);
-        auto r = layout->index_to_pos(1);
-        cr->move_to(text_x,text_y);
-        layout->add_to_cairo_context(cr);
+        cr->move_to(pos_icon_.first, pos_icon_.second);
         cr->set_source_rgba(1.0,1.0,1.0,0.9);
-        cr->fill();
-
-        clear_box_ = Cairo::Region::create({
-        	text_x, text_y,
-        	text_width, text_height});
-
-    } else if(!clear_box_->empty()) {
-        clear_box_ = Cairo::Region::create();
+        layout_icon_->show_in_cairo_context(cr);
     }
+
+    int text_x, text_y, text_width, text_height;
+    char msg[128];
+    sprintf(msg,"Generation: %llu", data.second);
+    layout_note_->set_text(msg);
+    layout_note_->get_pixel_size(text_width,text_height);
+    cr->move_to(east_-text_width-0.025*width_,south_-text_height-0.025*height_);
+    layout_note_->show_in_cairo_context(cr);
 
     return true;
 }
@@ -205,7 +207,7 @@ bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
     if(button_event->button != 1) {
         return false;
     }
-    if(clear_box_->contains_point(button_event->x,button_event->y)) {
+    if(box_icon_->contains_point(button_event->x,button_event->y)) {
         worker_.do_clear_nulls();
         return false;
     }
@@ -213,7 +215,6 @@ bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
     int y = button_event->y;
     if(!device_to_cell(&x,&y))
         return false;
-    //std::cerr << "Button Pressed on cell " << lastx_ << "x" << lasty_ << "\n";
 
     worker_.toggle_cell(x,y,true);
     lastx_ = x;
@@ -294,3 +295,22 @@ bool SimCHCG::on_key_press_event(GdkEventKey* key_event) {
     return false;
 };
 
+void SimCHCG::create_our_pango_layouts() {
+    layout_name_ = create_pango_layout(name_.c_str());
+    layout_name_->set_font_description(font_name_);
+    layout_name_->set_alignment(Pango::ALIGN_CENTER);
+
+    layout_note_ = create_pango_layout("");
+    layout_note_->set_font_description(font_note_);
+    layout_note_->set_alignment(Pango::ALIGN_CENTER);
+
+    layout_icon_ = create_pango_layout(normal_icons);
+    layout_icon_->set_font_description(font_icon_);
+    layout_icon_->set_alignment(Pango::ALIGN_CENTER);
+}
+
+void SimCHCG::create_icon_box() {
+    assert(layout_icon_);
+
+
+}

@@ -27,11 +27,16 @@ public:
     }
 
 protected:
+    bool device_to_cell(int *x, int *y);
+    void create_our_pango_layouts();
+    void create_icon_box();
+
     //Override default signal handler:
     virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
     virtual void on_realize() override;
     virtual void on_unrealize() override;
     virtual void on_size_allocate(Gtk::Allocation& allocation) override;
+    virtual void on_screen_changed(const Glib::RefPtr<Gdk::Screen>& previous_screen) override;
 
     virtual bool on_button_press_event(GdkEventButton* button_event) override;
     virtual bool on_motion_notify_event(GdkEventMotion* motion_event) override;
@@ -49,8 +54,6 @@ protected:
     double width_, height_;
     double east_, north_, west_, south_;
 
-
-    bool device_to_cell(int *x, int *y);
     int lastx_{-1}, lasty_{-1};
 
     Glib::RefPtr<Gdk::Pixbuf> logo_;
@@ -58,11 +61,15 @@ protected:
     sigc::connection cursor_timeout_;
 
 	Pango::FontDescription font_name_, font_note_, font_icon_;
+    std::pair<double,double> pos_name_, pos_note_, pos_icon_, pos_logo_;
+
+    Glib::RefPtr<Pango::Layout> layout_name_, layout_note_, layout_icon_;
+
+    Cairo::RefPtr<Cairo::Region> box_icon_;
 
     Worker worker_;
     Glib::Threads::Thread* worker_thread_{nullptr};
 
-    Cairo::RefPtr< Cairo::Region > clear_box_;
 
     signal_queue_draw_t signal_queue_draw_;
 };
