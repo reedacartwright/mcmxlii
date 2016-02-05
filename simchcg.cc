@@ -16,7 +16,7 @@
 #define OUR_FRAME_RATE 15
 
 const char normal_icons[] = u8"\uf12d \uf26c";
-const char active_eraser_icons[] = u8"<span foreground='blue'>\uf12d</span> \uf26c";
+const char active_eraser_icons[] = u8"<span foreground='#FFF68FE6'>\uf12d</span> \uf26c";
 
 SimCHCG::SimCHCG(int width, int height, double mu, int delay, bool fullscreen) :
     grid_width_{width}, grid_height_{height}, mu_(mu),
@@ -133,13 +133,7 @@ void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
     pos_name_ = {(west_+east_)/2.0-text_width/2.0, north_+(logo_top-north_)/2.0-text_height/2.0};
 
     // Icons
-    assert(layout_icon_);
-    layout_icon_->get_pixel_size(text_width,text_height);
-    pos_icon_ = {east_-text_width-0.025*width_, north_+0.025*height_};
-
-    box_icon_ = Cairo::Region::create({
-        pos_icon_.first, pos_icon_.second,
-        text_width, text_height});
+    update_icon_bar_position();
 }
 
 void SimCHCG::on_screen_changed(const Glib::RefPtr<Gdk::Screen>& previous_screen) {
@@ -180,7 +174,7 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     cr->move_to(pos_name_.first, pos_name_.second);
     layout_name_->show_in_cairo_context(cr);
 
-    if(worker_.has_nulls()) {
+    if(has_nulls_) {
         cr->move_to(pos_icon_.first, pos_icon_.second);
         cr->set_source_rgba(1.0,1.0,1.0,0.9);
         layout_icon_->show_in_cairo_context(cr);
@@ -197,26 +191,40 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     return true;
 }
 
-// NOTE: If you want to add an outline, uncomment these lines and comment the line above.
-//cr->fill_preserve();
-//cr->set_source_rgba(0.0,0.0,0.0,0.2);
-//cr->set_line_width(0.5);
-//cr->stroke();
-
 bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
     if(button_event->button != 1) {
         return false;
     }
-    if(box_icon_->contains_point(button_event->x,button_event->y)) {
-        worker_.do_clear_nulls();
-        return false;
-    }
     int x = button_event->x;
     int y = button_event->y;
+    if(has_nulls_ && box_icon_->contains_point(x,y)) {
+        int index, trailing;
+        x = (x-pos_icon_.first)*PANGO_SCALE;
+        y = (y-pos_icon_.second)*PANGO_SCALE;
+        if(layout_icon_->xy_to_index(x, y, index,trailing)) {
+            switch(index) {
+                case 0: // eraser
+                case 1:
+                    eraser_clicked();
+                    break;
+                case 2: // space
+                    break;
+                case 3: // clear screen
+                case 4:
+                    has_nulls_ = false;
+                    worker_.do_clear_nulls();
+                    break;
+                default:
+                    break;
+            };
+        }
+        return false;
+    }
     if(!device_to_cell(&x,&y))
         return false;
 
-    worker_.toggle_cell(x,y,true);
+    has_nulls_ = true;
+    worker_.toggle_cell(x,y,!erasing_);
     lastx_ = x;
     lasty_ = y;
 
@@ -257,19 +265,19 @@ bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
         for(int d=o; d != dx; d += o) {
             int nx = lastx_+d;
             int ny = lasty_+(d*dy)/dx;
-            worker_.toggle_cell(nx,ny,true);
+            worker_.toggle_cell(nx,ny,!erasing_);
         }
     } else {
         int o = sgn(dy);
         for(int d=o; d != dy; d += o) {
             int ny = lasty_+d;
             int nx = lastx_+(d*dx)/dy;
-            worker_.toggle_cell(nx,ny,true);
+            worker_.toggle_cell(nx,ny,!erasing_);
         }
     }
     lastx_ = x;
     lasty_ = y;
-    worker_.toggle_cell(x,y,true);
+    worker_.toggle_cell(x,y,!erasing_);
     return false;
 }
 
@@ -285,6 +293,35 @@ bool SimCHCG::device_to_cell(int *x, int *y) {
     *x = xx;
     *y = yy;
     return true;
+}
+
+void SimCHCG::eraser_clicked() {
+    erasing_ = !erasing_;
+    if(erasing_) {
+        set_icon_bar_markup(active_eraser_icons);
+    } else {
+        set_icon_bar_markup(normal_icons);
+    }
+}
+
+void SimCHCG::set_icon_bar_markup(const char *ss) {
+    assert(ss != nullptr);
+    assert(layout_icon_);
+    layout_icon_->set_markup(ss);
+    update_icon_bar_position();
+}
+
+void SimCHCG::update_icon_bar_position() {
+    assert(layout_icon_);
+
+    int text_width, text_height;
+    layout_icon_->get_pixel_size(text_width,text_height);
+    pos_icon_ = {east_-text_width-0.025*width_, north_+0.025*height_};
+
+    box_icon_ = Cairo::Region::create({
+        static_cast<int>(pos_icon_.first),
+        static_cast<int>(pos_icon_.second),
+        text_width, text_height});
 }
 
 bool SimCHCG::on_key_press_event(GdkEventKey* key_event) {

@@ -6,6 +6,7 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <set>
 
 #include <boost/timer/timer.hpp>
 
@@ -131,7 +132,7 @@ public:
     // Thread function.
     void do_work(SimCHCG* caller);
 
-    std::pair<pop_t,unsigned long long> get_data() const;
+    std::pair<pop_t,unsigned long long> get_data();
 
     void swap_buffers();
 
@@ -142,8 +143,6 @@ public:
     void do_clear_nulls();
 
     void toggle_cell(int x, int y, bool on);
-
-    bool has_nulls();
 
 protected:
     void apply_toggles();
@@ -166,15 +165,16 @@ private:
 
     Glib::Threads::Cond sync_;
     Glib::Threads::Mutex sync_mutex_, toggle_mutex_;
-    bool next_generation{false};
-    bool clear_all_nulls_{false};
-    bool has_nulls_{false};
+    Glib::Threads::RWLock data_lock_;
 
-    mutable Glib::Threads::RWLock data_lock_;
+    bool next_generation_{false};
+    bool clear_all_nulls_{false};
 
     typedef std::map<std::pair<int,int>,bool> toggle_map_t;
     toggle_map_t toggle_map_;
 
+    typedef std::set<std::pair<int,int>> null_cells_t;
+    null_cells_t null_cells_;
 };
 
 #endif // GTKMM_EXAMPLEWORKER_H

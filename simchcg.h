@@ -31,6 +31,11 @@ protected:
     void create_our_pango_layouts();
     void create_icon_box();
 
+    void eraser_clicked();
+    void set_icon_bar_markup(const char *ss);
+    void update_icon_bar_position();
+
+
     //Override default signal handler:
     virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
     virtual void on_realize() override;
@@ -67,9 +72,10 @@ protected:
 
     Cairo::RefPtr<Cairo::Region> box_icon_;
 
+    bool erasing_{false}, has_nulls_{false};
+
     Worker worker_;
     Glib::Threads::Thread* worker_thread_{nullptr};
-
 
     signal_queue_draw_t signal_queue_draw_;
 };

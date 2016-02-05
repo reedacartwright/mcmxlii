@@ -22,8 +22,8 @@ void Worker::stop() {
 }
 
 const double mutation[128] = {
-  2.0, 1.5, 1.2, 1.1, 1.1, 1.1, 1.1, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-  0.95, 0.95, 0.9, 0.9, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+  2.0, 1.5, 1.2, 1.2, 1.2, 1.1, 1.1, 1.1, 1.1, 1.1, 1.1, 0.999, 0.999, 0.99, 0.99, 0.99,
+  0.95, 0.95, 0.95, 0.9, 0.9, 0.9, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
   1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
   1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
   1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
@@ -36,7 +36,7 @@ void Worker::do_work(SimCHCG* caller)
 {
     static_assert(num_alleles < 256, "Too many colors.");
     go_ = true;
-    next_generation = false;
+    next_generation_ = false;
     gen_ = 0;
     sleep(delay_);
 
@@ -105,14 +105,14 @@ void Worker::do_work(SimCHCG* caller)
         swap_buffers();
         caller->signal_queue_draw().emit();
         Glib::Threads::Mutex::Lock slock{sync_mutex_};
-        while(!next_generation) {
+        while(!next_generation_) {
             sync_.wait(sync_mutex_);
         }
-        next_generation = false;
+        next_generation_ = false;
     }
 }
 
-std::pair<pop_t,unsigned long long> Worker::get_data() const {
+std::pair<pop_t,unsigned long long> Worker::get_data() {
     Glib::Threads::RWLock::ReaderLock lock{data_lock_};
     return {*pop_a_.get(),gen_};
 }
@@ -130,7 +130,7 @@ void Worker::swap_buffers() {
 
 void Worker::do_next_generation() {
     Glib::Threads::Mutex::Lock lock{sync_mutex_};
-    next_generation = true;
+    next_generation_ = true;
     sync_.signal();
 }
 
@@ -145,36 +145,29 @@ void Worker::toggle_cell(int x, int y, bool on) {
     toggle_map_[{x,y}] = on;
 }
 
-bool Worker::has_nulls() {
-    Glib::Threads::Mutex::Lock lock{toggle_mutex_};
-    return has_nulls_;    
-}
-
 void Worker::apply_toggles() {
     Glib::Threads::Mutex::Lock lock{toggle_mutex_};
     pop_t &a = *pop_a_.get();
 
     if(clear_all_nulls_) {
-        if(!has_nulls_)
-            return;
-        for(auto && aa : a) {
-            if(aa.is_null()) {
-                aa.toggle_off();
-            }
-        }
         toggle_map_.clear();
-        has_nulls_ = clear_all_nulls_ = false;
+        for(auto && pos : null_cells_) {
+            int x = pos.first;
+            int y = pos.second;
+            a[x+y*width_].toggle_off();
+        }
+        null_cells_.clear();
+        clear_all_nulls_ = false;
         return;
     }
-    if(!toggle_map_.empty())
-    	 has_nulls_ = true;
     for(auto && cell : toggle_map_) {
     	int x = cell.first.first;
     	int y = cell.first.second;
     	assert(0 <= x && x < width_ && 0 <= y && y < height_);
     	if(cell.second) {
+            null_cells_.insert(cell.first);
     		a[x+y*width_].toggle_on();
-    	} else {
+    	} else if(null_cells_.erase(cell.first) > 0) {
     		a[x+y*width_].toggle_off();
     	}
     }
