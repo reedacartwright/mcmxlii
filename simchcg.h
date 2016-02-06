@@ -21,15 +21,11 @@ public:
         font_name_.set_size(n*48*PANGO_SCALE);
     }
 
-    typedef sigc::signal<void> signal_queue_draw_t;
-    signal_queue_draw_t signal_queue_draw() {
-        return signal_queue_draw_;
-    }
+    void notify_queue_draw();
 
 protected:
     bool device_to_cell(int *x, int *y);
     void create_our_pango_layouts();
-    void create_icon_box();
 
     void eraser_clicked();
     void clear_clicked();
@@ -78,7 +74,7 @@ protected:
     Worker worker_;
     Glib::Threads::Thread* worker_thread_{nullptr};
 
-    signal_queue_draw_t signal_queue_draw_;
+    Glib::Dispatcher draw_dispatcher_;
 };
 
 #endif

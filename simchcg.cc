@@ -29,7 +29,7 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay, bool fullscreen) :
         this->worker_.do_next_generation(); return true;
         }, 1000.0/OUR_FRAME_RATE );
 
-    signal_queue_draw().connect(sigc::mem_fun(*this, &SimCHCG::queue_draw));
+    draw_dispatcher_.connect([&]() {this->queue_draw();});
 
     add_events(Gdk::POINTER_MOTION_MASK|Gdk::BUTTON_PRESS_MASK|Gdk::KEY_PRESS_MASK);
     set_can_focus();
@@ -92,8 +92,6 @@ void SimCHCG::on_realize() {
     dbus_connection_flush(connection);
     dbus_message_unref(message);
     dbus_connection_unref(connection);
-
-    create_our_pango_layouts();
 }
 
 void SimCHCG::on_unrealize() {
@@ -137,12 +135,15 @@ void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
 }
 
 void SimCHCG::on_screen_changed(const Glib::RefPtr<Gdk::Screen>& previous_screen) {
+    Gtk::DrawingArea::on_screen_changed(previous_screen);
     SimCHCG::create_our_pango_layouts();
 }
 
 bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
     //boost::timer::auto_cpu_timer measure_speed(std::cerr,  "on_draw: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
+
+    auto data = worker_.get_data();
     
     cr->set_antialias(Cairo::ANTIALIAS_NONE);
     cr->save();
@@ -150,8 +151,6 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     cr->scale(cairo_scale_,cairo_scale_);
     cr->set_source_rgba(0.0,0.0,0.0,1.0);
     cr->paint();
-
-    auto data = worker_.get_data();
 
     for(int y=0;y<grid_height_;++y) {
         for(int x=0;x<grid_width_;++x) {
@@ -189,6 +188,17 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     layout_note_->show_in_cairo_context(cr);
 
     return true;
+}
+
+bool SimCHCG::on_key_press_event(GdkEventKey* key_event) {
+    if(key_event->keyval == GDK_KEY_F5) {
+        clear_clicked();
+        return true;
+    } else if(key_event->keyval == GDK_KEY_space && has_nulls_) {
+        eraser_clicked();
+        return true;
+    }
+    return false;
 }
 
 bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
@@ -244,8 +254,8 @@ template <typename T> int sgn(T val) {
 
 bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
     //std::cerr << "Pointer Moved to cell " << xy.first << "x" << xy.second << "\n";
-    cursor_timeout_.disconnect();
     if(gdk_device_get_source(motion_event->device) != GDK_SOURCE_TOUCHSCREEN) {
+        cursor_timeout_.disconnect();
         get_window()->set_cursor(cell_cursor_);
         cursor_timeout_ = Glib::signal_timeout().connect([&]() -> bool {
             this->get_window()->set_cursor(this->none_cursor_);
@@ -338,13 +348,10 @@ void SimCHCG::update_icon_bar_position() {
         text_width, text_height});
 }
 
-bool SimCHCG::on_key_press_event(GdkEventKey* key_event) {
-    if(key_event->keyval == GDK_KEY_F5) {
-        worker_.do_clear_nulls();
-        return false;
-    }
-    return false;
-};
+void SimCHCG::notify_queue_draw() {
+    draw_dispatcher_.emit();
+}
+
 
 void SimCHCG::create_our_pango_layouts() {
     layout_name_ = create_pango_layout(name_.c_str());
@@ -358,10 +365,4 @@ void SimCHCG::create_our_pango_layouts() {
     layout_icon_ = create_pango_layout(normal_icons);
     layout_icon_->set_font_description(font_icon_);
     layout_icon_->set_alignment(Pango::ALIGN_CENTER);
-}
-
-void SimCHCG::create_icon_box() {
-    assert(layout_icon_);
-
-
 }

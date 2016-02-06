@@ -101,9 +101,9 @@ void Worker::do_work(SimCHCG* caller)
             }
         }
         lock.release();
-
         swap_buffers();
-        caller->signal_queue_draw().emit();
+
+        caller->notify_queue_draw();
         Glib::Threads::Mutex::Lock slock{sync_mutex_};
         while(!next_generation_) {
             sync_.wait(sync_mutex_);

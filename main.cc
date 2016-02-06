@@ -22,6 +22,7 @@ typed_value<bool> *value(bool *v) {
 bool on_key(GdkEventKey* event, Gtk::Window *win) {
 	if(event->keyval == GDK_KEY_Escape) {
 		win->hide();
+
 		return false;
 	}
 	return false;
@@ -91,9 +92,10 @@ int main(int argc, char** argv) {
     s.name(arg.text.c_str());
     s.name_scale(arg.text_scale);
     win.add(s);
-
     win.show_all();
-    return app->run(win);
+    int status = app->run(win);
+    app->remove_window(win);
+    return status;
 }
 
 arg_t process_command_line(po::options_description *opt_desc, int argc, char** argv) {
