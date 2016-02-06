@@ -145,6 +145,11 @@ void Worker::toggle_cell(int x, int y, bool on) {
     toggle_map_[{x,y}] = on;
 }
 
+const std::pair<int,int> erase_area_[] = {
+    {-1,0},{0,-1},{1,0},{0,1},
+    {-1,-1},{1,-1},{1,1},{-1,1}
+};
+
 void Worker::apply_toggles() {
     Glib::Threads::Mutex::Lock lock{toggle_mutex_};
     pop_t &a = *pop_a_.get();
@@ -169,7 +174,14 @@ void Worker::apply_toggles() {
     		a[x+y*width_].toggle_on();
     	} else if(null_cells_.erase(cell.first) > 0) {
     		a[x+y*width_].toggle_off();
-    	}
+    	} else {
+            for(auto && off : erase_area_) {
+                if(null_cells_.erase({cell.first.first+off.first,cell.first.second+off.second}) > 0) {
+                    a[(x+off.first)+(y+off.second)*width_].toggle_off();
+                    break;
+                }
+            }
+        }
     }
     toggle_map_.clear();
 }

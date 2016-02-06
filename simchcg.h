@@ -32,6 +32,7 @@ protected:
     void create_icon_box();
 
     void eraser_clicked();
+    void clear_clicked();
     void set_icon_bar_markup(const char *ss);
     void update_icon_bar_position();
 

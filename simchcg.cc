@@ -15,8 +15,8 @@
 
 #define OUR_FRAME_RATE 15
 
-const char normal_icons[] = u8"\uf12d \uf26c";
-const char active_eraser_icons[] = u8"<span foreground='#FFF68FE6'>\uf12d</span> \uf26c";
+const char normal_icons[] = u8"\uf12d   \uf26c";
+const char active_eraser_icons[] = u8"<span foreground='#FFF68FE6'>\uf12d</span>   \uf26c";
 
 SimCHCG::SimCHCG(int width, int height, double mu, int delay, bool fullscreen) :
     grid_width_{width}, grid_height_{height}, mu_(mu),
@@ -208,20 +208,26 @@ bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
                     eraser_clicked();
                     break;
                 case 2: // space
-                    break;
-                case 3: // clear screen
+                case 3:
                 case 4:
-                    has_nulls_ = false;
-                    worker_.do_clear_nulls();
+                    break;
+                case 5: // clear screen
+                case 6:
+                    clear_clicked();
                     break;
                 default:
                     break;
             };
         }
+        lastx_ = -1;
+        lasty_ = -1;
         return false;
     }
-    if(!device_to_cell(&x,&y))
+    if(!device_to_cell(&x,&y)) {
+        lastx_ = -1;
+        lasty_ = -1;
         return false;
+    }
 
     has_nulls_ = true;
     worker_.toggle_cell(x,y,!erasing_);
@@ -248,31 +254,31 @@ bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
     }
     int x = motion_event->x;
     int y = motion_event->y;
-    if(!device_to_cell(&x,&y))
-        return false;
-    if(!(motion_event->state & GDK_BUTTON1_MASK)) {
-        lastx_ = x;
-        lasty_ = y;
+    if(!device_to_cell(&x,&y) || !(motion_event->state & GDK_BUTTON1_MASK)) {
+        lastx_ = -1;
+        lasty_ = -1;        
         return false;
     }
-    int dx = x - lastx_;
-    int dy = y - lasty_;
-    if(dx == 0 && dy == 0) {
-        return false;
-    }
-    if(abs(dx) > abs(dy)) {
-        int o = sgn(dx);
-        for(int d=o; d != dx; d += o) {
-            int nx = lastx_+d;
-            int ny = lasty_+(d*dy)/dx;
-            worker_.toggle_cell(nx,ny,!erasing_);
+    if(0 <= lastx_ && lastx_ < width_ && 0 <= lasty_ && lasty_ < height_) {
+        int dx = x - lastx_;
+        int dy = y - lasty_;
+        if(dx == 0 && dy == 0) {
+            return false;
         }
-    } else {
-        int o = sgn(dy);
-        for(int d=o; d != dy; d += o) {
-            int ny = lasty_+d;
-            int nx = lastx_+(d*dx)/dy;
-            worker_.toggle_cell(nx,ny,!erasing_);
+        if(abs(dx) > abs(dy)) {
+            int o = sgn(dx);
+            for(int d=o; d != dx; d += o) {
+                int nx = lastx_+d;
+                int ny = lasty_+(d*dy)/dx;
+                worker_.toggle_cell(nx,ny,!erasing_);
+            }
+        } else {
+            int o = sgn(dy);
+            for(int d=o; d != dy; d += o) {
+                int ny = lasty_+d;
+                int nx = lastx_+(d*dx)/dy;
+                worker_.toggle_cell(nx,ny,!erasing_);
+            }
         }
     }
     lastx_ = x;
@@ -302,6 +308,14 @@ void SimCHCG::eraser_clicked() {
     } else {
         set_icon_bar_markup(normal_icons);
     }
+}
+
+void SimCHCG::clear_clicked() {
+    if(erasing_) {
+        eraser_clicked();
+    }
+    has_nulls_ = false;
+    worker_.do_clear_nulls();
 }
 
 void SimCHCG::set_icon_bar_markup(const char *ss) {
