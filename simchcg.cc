@@ -167,15 +167,15 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 
     cr->set_antialias(Cairo::ANTIALIAS_GRAY);
     Gdk::Cairo::set_source_pixbuf(cr, logo_, pos_logo_.first, pos_logo_.second);
-    cr->paint_with_alpha(0.9);
+    cr->paint_with_alpha(0.75);
 
-    cr->set_source_rgba(1.0,1.0,1.0,0.9);
+    cr->set_source_rgba(1.0,1.0,1.0,0.75);
     cr->move_to(pos_name_.first, pos_name_.second);
     layout_name_->show_in_cairo_context(cr);
 
     if(has_nulls_) {
         cr->move_to(pos_icon_.first, pos_icon_.second);
-        cr->set_source_rgba(1.0,1.0,1.0,0.9);
+        //cr->set_source_rgba(1.0,1.0,1.0,0.75);
         layout_icon_->show_in_cairo_context(cr);
     }
 
@@ -209,9 +209,9 @@ bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
     int y = button_event->y;
     if(has_nulls_ && box_icon_->contains_point(x,y)) {
         int index, trailing;
-        x = (x-pos_icon_.first)*PANGO_SCALE;
-        y = (y-pos_icon_.second)*PANGO_SCALE;
-        if(layout_icon_->xy_to_index(x, y, index,trailing)) {
+        int xx = (x-pos_icon_.first)*PANGO_SCALE;
+        int yy = (y-pos_icon_.second)*PANGO_SCALE;
+        if(layout_icon_->xy_to_index(xx, yy, index,trailing)) {
             switch(index) {
                 case 0: // eraser
                 case 1:
@@ -220,19 +220,20 @@ bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
                 case 2: // space
                 case 3:
                 case 4:
-                    break;
+                    goto no_icon;
                 case 5: // clear screen
                 case 6:
                     clear_clicked();
                     break;
                 default:
-                    break;
+                    goto no_icon;
             };
         }
         lastx_ = -1;
         lasty_ = -1;
         return false;
     }
+no_icon:
     if(!device_to_cell(&x,&y)) {
         lastx_ = -1;
         lasty_ = -1;
