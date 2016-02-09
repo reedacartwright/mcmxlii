@@ -206,6 +206,7 @@ bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
     if(button_event->button != 1) {
         return false;
     }
+    update_cursor_timeout();
     int x = button_event->x;
     int y = button_event->y;
     if(has_nulls_ && box_icon_->contains_point(x,y)) {
@@ -232,13 +233,13 @@ bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
         }
         lastx_ = -1;
         lasty_ = -1;
-        return false;
+        return true;
     }
 no_icon:
     if(!device_to_cell(&x,&y)) {
         lastx_ = -1;
         lasty_ = -1;
-        return false;
+        return true;
     }
 
     has_nulls_ = true;
@@ -246,7 +247,7 @@ no_icon:
     lastx_ = x;
     lasty_ = y;
 
-    return false;
+    return true;
 }
 
 // http://stackoverflow.com/a/4609795
@@ -254,28 +255,32 @@ template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
+void SimCHCG::update_cursor_timeout() {
+    cursor_timeout_.disconnect();
+    get_window()->set_cursor(cell_cursor_);
+    cursor_timeout_ = Glib::signal_timeout().connect([&]() -> bool {
+        this->get_window()->set_cursor(this->none_cursor_);
+        return false;
+    }, 500);
+}
+
 bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
     //std::cerr << "Pointer Moved to cell " << xy.first << "x" << xy.second << "\n";
     if(gdk_device_get_source(motion_event->device) != GDK_SOURCE_TOUCHSCREEN) {
-        cursor_timeout_.disconnect();
-        get_window()->set_cursor(cell_cursor_);
-        cursor_timeout_ = Glib::signal_timeout().connect([&]() -> bool {
-            this->get_window()->set_cursor(this->none_cursor_);
-            return false;
-        }, 500);
+        update_cursor_timeout();
     }
     int x = motion_event->x;
     int y = motion_event->y;
     if(!device_to_cell(&x,&y) || !(motion_event->state & GDK_BUTTON1_MASK)) {
         lastx_ = -1;
         lasty_ = -1;        
-        return false;
+        return true;
     }
     if(0 <= lastx_ && lastx_ < width_ && 0 <= lasty_ && lasty_ < height_) {
         int dx = x - lastx_;
         int dy = y - lasty_;
         if(dx == 0 && dy == 0) {
-            return false;
+            return true;
         }
         if(abs(dx) > abs(dy)) {
             int o = sgn(dx);
@@ -296,7 +301,7 @@ bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
     lastx_ = x;
     lasty_ = y;
     worker_.toggle_cell(x,y,!erasing_);
-    return false;
+    return true;
 }
 
 bool SimCHCG::device_to_cell(int *x, int *y) {

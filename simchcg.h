@@ -32,6 +32,7 @@ protected:
     void set_icon_bar_markup(const char *ss);
     void update_icon_bar_position();
 
+    void update_cursor_timeout();
 
     //Override default signal handler:
     virtual bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
