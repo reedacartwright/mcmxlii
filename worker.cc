@@ -55,22 +55,27 @@ void Worker::do_work(SimCHCG* caller)
                     continue; // cell is null
                 }
 
-                double w, weight = rand_exp(rand, a[pos].fitness);
-                if(x > 0 && (w = rand_exp(rand, a[(x-1)+y*width_].fitness)) < weight ) {
+                double w;
+                double weight = a[pos].is_fertile() ? rand_exp(rand, a[pos].fitness) : INFINITY;
+                int pos2 = (x-1)+y*width_;
+                if(x > 0 && a[pos2].is_fertile() && (w = rand_exp(rand, a[pos2].fitness)) < weight ) {
                     weight = w;
-                    b[pos] = a[(x-1)+y*width_];
+                    b[pos] = a[pos2];
                 }
-                if(y > 0 && (w = rand_exp(rand, a[x+(y-1)*width_].fitness)) < weight ) {
+                pos2 = x+(y-1)*width_;
+                if(y > 0 && a[pos2].is_fertile() && (w = rand_exp(rand, a[pos2].fitness)) < weight ) {
                     weight = w;
-                    b[pos] = a[x+(y-1)*width_];
+                    b[pos] = a[pos2];
                 }
-                if(x < width_-1 && (w = rand_exp(rand, a[(x+1)+y*width_].fitness)) < weight ) {
+                pos2 = (x+1)+y*width_;
+                if(x < width_-1 && a[pos2].is_fertile() && (w = rand_exp(rand, a[pos2].fitness)) < weight ) {
                     weight = w;
-                    b[pos] = a[(x+1)+y*width_];
+                    b[pos] = a[pos2];
                 }
-                if(y < height_-1 && (w = rand_exp(rand, a[x+(y+1)*width_].fitness)) < weight ) {
+                pos2 = x+(y+1)*width_;
+                if(y < height_-1 && a[pos2].is_fertile() && (w = rand_exp(rand, a[pos2].fitness)) < weight ) {
                     weight = w;
-                    b[pos] = a[x+(y+1)*width_];
+                    b[pos] = a[pos2];
                 }
                 if(m > 0) {
                     m -= 1;
@@ -82,11 +87,11 @@ void Worker::do_work(SimCHCG* caller)
                 b[pos].fitness *= mutation[r >> 57]; // use top 7 bits for phenotype
                 r &= 0x01FFFFFFFFFFFFFF;
                 // Get the color of the parent
-                uint64_t color = b[pos].type & 0xFF;
+                uint64_t color = b[pos].color();
                 // Mutate color so that it does not match the parent
                 color = (color + r % (num_alleles-1)) % num_alleles;
                 // Store the allele color in the bottom 8 bits.
-                b[pos].type = (b[pos].type & 0xFFFFFFFFFFFFFF00) | color;
+                b[pos].type = (b[pos].type & CELL_FITNESS_MASK) | color;
             }
         }
         // Every so often rescale fitnesses to prevent underflow/overflow
@@ -95,9 +100,9 @@ void Worker::do_work(SimCHCG* caller)
             double m = it->fitness;
             if(m > 1e6) {
                 for(auto &aa : b) {
-                    uint64_t color = aa.type & 0xFF;
-                    aa.fitness = aa.fitness/m; // + (DBL_EPSILON/2.0);
-                    aa.type = (aa.type & 0xFFFFFFFFFFFFFF00) | color;
+                    uint64_t color = aa.color();
+                    aa.fitness = aa.fitness/m + (DBL_EPSILON/2.0);
+                    aa.type = (aa.type & CELL_FITNESS_MASK) | color;
                 }
             }
         }

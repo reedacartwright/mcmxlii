@@ -87,27 +87,32 @@ constexpr size_t num_colors = sizeof(col_set)/sizeof(color_rgb);
 constexpr size_t num_alleles = num_colors-2;
 constexpr size_t null_allele = num_colors-1;
 
-static_assert(null_allele < num_colors && null_allele < 256, "Null allele is invalid.");
+#define CELL_TYPE_MASK UINT64_C(0xFF)
+#define CELL_FITNESS_MASK (~CELL_TYPE_MASK)
+
+static_assert(null_allele < num_colors && null_allele <= CELL_TYPE_MASK , "Null allele is invalid.");
 
 union cell {
     cell() {
         fitness = 1.0;
         constexpr uint64_t color = 10;
         static_assert(color < num_alleles, "Default color is invalid.");
-        type = (type & 0xFFFFFFFFFFFFFF00) | color;
+        type = (type & CELL_FITNESS_MASK) | (color & CELL_TYPE_MASK);
     };
     double fitness;
     uint64_t type;
 
     bool is_null() const {
-        return ((type & 0xFF) == null_allele); 
+        return (color() == null_allele);
+    }
+    bool is_fertile() const {
+        return (color() < null_allele-1);
     }
     void toggle_on() {
-        fitness = DBL_MIN;
-        type = (type & 0xFFFFFFFFFFFFFF00) | null_allele;
+        type = (type & CELL_FITNESS_MASK) | null_allele;
     }
     void toggle_off() {
-        type = (type & 0xFFFFFFFFFFFFFF00) | (null_allele-1);
+        type = (type & CELL_FITNESS_MASK) | (null_allele-1);
     }
     void toggle() {
         if(is_null()) {
@@ -115,6 +120,10 @@ union cell {
         } else {
             toggle_on();
         }
+    }
+
+    uint64_t color() const {
+        return type & CELL_TYPE_MASK;
     }
 
     bool operator<(cell other) {
