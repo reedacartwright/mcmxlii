@@ -77,9 +77,10 @@ void Worker::do_work(SimCHCG* caller)
                     continue;
                 }
                 m = static_cast<int>(rand_exp(rand,mu_));
+                static_assert(sizeof(mutation)/sizeof(double) == 128);
                 uint64_t r = rand.get_uint64();
                 b[pos].fitness *= mutation[r >> 57]; // use top 7 bits for phenotype
-                r &= 0x00FFFFFFFFFFFFFF;
+                r &= 0x01FFFFFFFFFFFFFF;
                 // Get the color of the parent
                 uint64_t color = b[pos].type & 0xFF;
                 // Mutate color so that it does not match the parent
@@ -94,9 +95,9 @@ void Worker::do_work(SimCHCG* caller)
             double m = it->fitness;
             if(m > 1e6) {
                 for(auto &aa : b) {
-                    uint64_t x = aa.type;
+                    uint64_t color = aa.type & 0xFF;
                     aa.fitness = aa.fitness/m;
-                    aa.type = (aa.type & 0xFFFFFFFFFFFFFF00) | (x & 0xFF);
+                    aa.type = (aa.type & 0xFFFFFFFFFFFFFF00) | color;
                 }
             }
         }
