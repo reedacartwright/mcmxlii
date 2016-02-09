@@ -77,7 +77,7 @@ void Worker::do_work(SimCHCG* caller)
                     continue;
                 }
                 m = static_cast<int>(rand_exp(rand,mu_));
-                static_assert(sizeof(mutation)/sizeof(double) == 128);
+                static_assert(sizeof(mutation)/sizeof(double) == 128, "number of possible mutations is not 128");
                 uint64_t r = rand.get_uint64();
                 b[pos].fitness *= mutation[r >> 57]; // use top 7 bits for phenotype
                 r &= 0x01FFFFFFFFFFFFFF;
@@ -90,13 +90,14 @@ void Worker::do_work(SimCHCG* caller)
             }
         }
         // Every so often rescale fitnesses to prevent underflow/overflow
+        // Include an offset to guard against underflow if you have large differences
         if((1+gen_) % 10000 == 0) {
             auto it = std::max_element(b.begin(),b.end());
             double m = it->fitness;
             if(m > 1e6) {
                 for(auto &aa : b) {
                     uint64_t color = aa.type & 0xFF;
-                    aa.fitness = aa.fitness/m;
+                    aa.fitness = aa.fitness/m + (DBL_EPSILON/2.0);
                     aa.type = (aa.type & 0xFFFFFFFFFFFFFF00) | color;
                 }
             }

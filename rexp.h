@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cmath>
 #include <cfloat>
+#include <cassert>
 
 #include "xorshift64.h"
 
@@ -36,7 +37,10 @@ inline double rand_exp_zig(xorshift64 &rng) {
 	return a*ew[b];
 }
 
-inline double rand_exp(xorshift64 &rng, double rate = 1.0) { return rand_exp_zig(rng)/rate; }
+inline double rand_exp(xorshift64 &rng, double rate = 1.0) {
+	assert(rate > 0.0);
+	return rand_exp_zig(rng)/rate;
+}
 
 inline double rand_exp_trunc(xorshift64 &rng, double lim, double rate = 1.0) {
 	double u = rng.get_double52();
