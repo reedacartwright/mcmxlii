@@ -31,8 +31,12 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
 
     draw_dispatcher_.connect([&]() {this->queue_draw();});
 
-    add_events(Gdk::POINTER_MOTION_MASK|Gdk::BUTTON_PRESS_MASK|Gdk::KEY_PRESS_MASK);
+    add_events(Gdk::POINTER_MOTION_MASK|Gdk::BUTTON_PRESS_MASK|Gdk::KEY_PRESS_MASK|Gdk::TOUCH_MASK);
     set_can_focus();
+
+    signal_touch_event().connect([&](GdkEventTouch* touch_event) -> bool {
+    	return this->on_touch_event(touch_event);
+    });
 
     logo_ = Gdk::Pixbuf::create_from_inline(-1,logo_inline,false);
 
@@ -248,6 +252,12 @@ no_icon:
 
     return true;
 }
+
+bool SimCHCG::on_touch_event(GdkEventTouch* touch_event) {
+	//std::cerr << "Hello World\n";
+	return false;
+}
+
 
 // http://stackoverflow.com/a/4609795
 template <typename T> int sgn(T val) {

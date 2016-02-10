@@ -75,6 +75,9 @@ int main(int argc, char** argv) {
         win.set_default_size(1,1);
         win.move(mx,my);
         win.fullscreen();
+        //m->grab(win.get_window(), Gdk::OWNERSHIP_NONE, true,
+        //	Gdk::POINTER_MOTION_MASK|Gdk::BUTTON_PRESS_MASK|Gdk::TOUCH_MASK,
+       // 	GDK_CURRENT_TIME);
     }
 
     if(arg.help) {
