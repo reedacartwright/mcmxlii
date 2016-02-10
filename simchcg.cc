@@ -14,6 +14,7 @@
 #include "logo.inl"
 
 #define OUR_FRAME_RATE 15
+#define OVERLAY_ALPHA 0.75
 
 const char normal_icons[] = u8"\uf12d   \uf26c";
 const char active_eraser_icons[] = u8"<span foreground='#FFF68FE6'>\uf12d</span>   \uf26c";
@@ -153,7 +154,7 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 
     for(int y=0;y<grid_height_;++y) {
         for(int x=0;x<grid_width_;++x) {
-            int a = static_cast<int>(data.first[x+y*grid_width_].type & 0xFF);
+            int a = static_cast<int>(data.first[x+y*grid_width_].color());
             assert(a < num_colors);
             cr->set_source_rgba(
                 col_set[a].red, col_set[a].blue,
@@ -167,15 +168,14 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 
     cr->set_antialias(Cairo::ANTIALIAS_GRAY);
     Gdk::Cairo::set_source_pixbuf(cr, logo_, pos_logo_.first, pos_logo_.second);
-    cr->paint_with_alpha(0.75);
+    cr->paint_with_alpha(OVERLAY_ALPHA);
 
-    cr->set_source_rgba(1.0,1.0,1.0,0.75);
+    cr->set_source_rgba(1.0,1.0,1.0,OVERLAY_ALPHA);
     cr->move_to(pos_name_.first, pos_name_.second);
     layout_name_->show_in_cairo_context(cr);
 
     if(has_nulls_) {
         cr->move_to(pos_icon_.first, pos_icon_.second);
-        //cr->set_source_rgba(1.0,1.0,1.0,0.75);
         layout_icon_->show_in_cairo_context(cr);
     }
 
