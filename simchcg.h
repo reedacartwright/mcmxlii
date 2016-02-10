@@ -11,7 +11,7 @@
 class SimCHCG : public Gtk::DrawingArea
 {
 public:
-    SimCHCG(int width, int height, double mu, int delay, bool fullscreen);
+    SimCHCG(int width, int height, double mu, int delay);
     virtual ~SimCHCG();
 
     void name(const char* n) {
@@ -48,7 +48,6 @@ protected:
     int device_width_, device_height_;
     int grid_width_, grid_height_;
     double mu_;
-    bool fullscreen_;
 
     std::string name_{"Human and Comparative Genomics Laboratory"};
 

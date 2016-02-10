@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    SimCHCG s(arg.width,arg.height,arg.mu,arg.delay,arg.fullscreen);
+    SimCHCG s(arg.width,arg.height,arg.mu,arg.delay);
     s.name(arg.text.c_str());
     s.name_scale(arg.text_scale);
     win.add(s);

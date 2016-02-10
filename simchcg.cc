@@ -18,10 +18,9 @@
 const char normal_icons[] = u8"\uf12d   \uf26c";
 const char active_eraser_icons[] = u8"<span foreground='#FFF68FE6'>\uf12d</span>   \uf26c";
 
-SimCHCG::SimCHCG(int width, int height, double mu, int delay, bool fullscreen) :
+SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
     grid_width_{width}, grid_height_{height}, mu_(mu),
-    worker_{width,height,mu,delay},
-    fullscreen_{fullscreen}
+    worker_{width,height,mu,delay}
 {
     //Glib::signal_timeout().connect(sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
     
