@@ -31,7 +31,9 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
 
     draw_dispatcher_.connect([&]() {this->queue_draw();});
 
-    add_events(Gdk::POINTER_MOTION_MASK|Gdk::BUTTON_PRESS_MASK|Gdk::KEY_PRESS_MASK|Gdk::TOUCH_MASK);
+    add_events(Gdk::POINTER_MOTION_MASK |
+        Gdk::BUTTON_PRESS_MASK|Gdk::BUTTON_RELEASE_MASK |
+        Gdk::KEY_PRESS_MASK|Gdk::TOUCH_MASK);
     set_can_focus();
 
     signal_touch_event().connect([&](GdkEventTouch* touch_event) -> bool {
@@ -51,6 +53,11 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
 	font_icon_.set_weight(Pango::WEIGHT_BOLD);
     font_icon_.set_family("Font Awesome");
     font_icon_.set_size(28*PANGO_SCALE);
+
+    // auto gesture = Gtk::GestureSwipe::create(*this);
+    // gesture->signal_swipe().connect([&](double vx, double vy) {
+    //     std::cerr << "    Hello World    \n";
+    // });
 
     worker_thread_ = Glib::Threads::Thread::create([&]{
         worker_.do_work(this);
