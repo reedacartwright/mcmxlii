@@ -201,32 +201,35 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     return true;
 }
 
+// bool SimCHCG::on_event(GdkEvent* event) {
+//     //std::cerr << "    Event " << event->type << "\n";
+//     return false;
+// }
+
 bool SimCHCG::on_key_press_event(GdkEventKey* key_event) {
     if(key_event->keyval == GDK_KEY_F5 && show_iconbar_) {
         clear_clicked();
-        return true;
+        return GDK_EVENT_STOP;
     } else if(key_event->keyval == GDK_KEY_BackSpace && show_iconbar_) {
         eraser_clicked();
-        return true;
+        return GDK_EVENT_STOP;
     }
-    return false;
+    return GDK_EVENT_PROPAGATE;
 }
 
 bool SimCHCG::on_touch_event(GdkEventTouch* touch_event) {
     if(!(touch_event->state & GDK_BUTTON1_MASK)) {
-        return false;
+        return GDK_EVENT_PROPAGATE;
     }
     int x = touch_event->x;
     int y = touch_event->y;
 
-    if(!device_to_cell(&x,&y)) {
-        return false;
-    }
+    device_to_cell(&x,&y);
     //std::cerr << "  Touch: " << touch_event->type << " at " << x << "x" << y << "\n";
     switch(touch_event->type) {
     case GDK_TOUCH_BEGIN: {
         if(process_iconbar_click(touch_event->x,touch_event->y)) {
-            return true;
+            return GDK_EVENT_STOP;
         }
         show_iconbar_ = true;
         touch_lastxy_[touch_event->sequence] = {x,y};
@@ -251,56 +254,51 @@ bool SimCHCG::on_touch_event(GdkEventTouch* touch_event) {
         }
         break;
     default:
-        return false;
+        return GDK_EVENT_PROPAGATE;
     };
 
-	return true;
+	return GDK_EVENT_STOP;
 }
 
 bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
-    if(button_event->button != 1) {
-        return false;
-    }
     update_cursor_timeout();
+    if(button_event->button != GDK_BUTTON_PRIMARY) {
+        return GDK_EVENT_PROPAGATE;
+    }
     int x = button_event->x;
     int y = button_event->y;
-    if(process_iconbar_click(x,y)) {
-        pointer_lastxy_ = {-1,-1};
-        return true;
-    }
-    if(!device_to_cell(&x,&y)) {
-        pointer_lastxy_ = {-1,-1};
-        return true;
-    }
-
-    show_iconbar_ = true;
-    worker_.toggle_cell(x,y,!erasing_);
+    bool ret = device_to_cell(&x,&y);    
     pointer_lastxy_ = {x,y};
-
-    return true;
+    if(process_iconbar_click(button_event->x,button_event->y)) {
+        return GDK_EVENT_STOP;
+    }
+    if(ret) {
+        show_iconbar_ = true;
+        worker_.toggle_cell(x,y,!erasing_);
+    }
+    return GDK_EVENT_STOP;
 }
 
 bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
-    if(gdk_device_get_source(motion_event->device) != GDK_SOURCE_TOUCHSCREEN) {
-        update_cursor_timeout();
+    auto d = gdk_event_get_source_device((GdkEvent*)motion_event);
+    if(d != nullptr && gdk_device_get_source(d) == GDK_SOURCE_TOUCHSCREEN) {
+        return GDK_EVENT_PROPAGATE;
+    }
+    update_cursor_timeout();
+    if(!(motion_event->state & GDK_BUTTON1_MASK)) {
+        return GDK_EVENT_PROPAGATE;
     }
     int x = motion_event->x;
     int y = motion_event->y;
-    if(!device_to_cell(&x,&y) || !(motion_event->state & GDK_BUTTON1_MASK)) {
-        pointer_lastxy_ = {-1,-1};
-        return true;
-    }
-    if(0 <= pointer_lastxy_.first  && pointer_lastxy_.first  < draw_width_ &&
-       0 <= pointer_lastxy_.second && pointer_lastxy_.second < draw_height_) {
-        worker_.toggle_line(pointer_lastxy_.first,pointer_lastxy_.second,x,y,!erasing_);
-    }
+    device_to_cell(&x,&y);
+    worker_.toggle_line(pointer_lastxy_.first, pointer_lastxy_.second, x, y, !erasing_);
     pointer_lastxy_ = {x,y};
-    return true;
+    return GDK_EVENT_STOP;
 }
 
 bool SimCHCG::process_iconbar_click(int x, int y) {
     if(!(show_iconbar_ && box_iconbar_->contains_point(x,y))) {
-        return false;
+        return GDK_EVENT_PROPAGATE;
     }
     int index, trailing;
     int xx = (x-pos_icon_.first)*PANGO_SCALE;
@@ -310,7 +308,7 @@ bool SimCHCG::process_iconbar_click(int x, int y) {
             case 0: // eraser
             case 1:
                 eraser_clicked();
-                return true;
+                return GDK_EVENT_STOP;
             case 2: // space
             case 3:
             case 4:
@@ -318,12 +316,12 @@ bool SimCHCG::process_iconbar_click(int x, int y) {
             case 5: // clear screen
             case 6:
                 clear_clicked();
-                return true;
+                return GDK_EVENT_STOP;
             default:
                 break;
         };
     }
-    return false;
+    return GDK_EVENT_PROPAGATE;
 }
 
 
@@ -337,17 +335,16 @@ void SimCHCG::update_cursor_timeout() {
 }
 
 bool SimCHCG::device_to_cell(int *x, int *y) {
-    assert(x != nullptr && y != nullptr);
-    int xx = *x;
-    int yy = *y;
-    if(!(west_ <= xx && xx < east_ && north_ <= yy && yy < south_ )) {
-    	return false;
+    bool ret = true;
+    if( x != nullptr ) {
+        *x = (*x-west_)/cairo_scale_;
+        ret = ret && 0 <= x < grid_width_;
     }
-    xx = (xx-west_)/cairo_scale_;
-    yy = (yy-north_)/cairo_scale_;
-    *x = xx;
-    *y = yy;
-    return true;
+    if( y != nullptr ) {
+        *y = (*y-north_)/cairo_scale_;
+        ret = ret && 0 <= y < grid_height_;
+    }
+    return ret;
 }
 
 void SimCHCG::eraser_clicked() {

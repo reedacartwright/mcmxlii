@@ -56,10 +56,6 @@ big: simchcg
 display: simchcg
 	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "$$DISPLAYMSG" -s "$(SCALE)"
 
-lkdisplay: simchcg
-	 LKSMITH_LOG=stderr LD_PRELOAD=/home/reed/Projects/lksmith/liblksmith.so \
-	./simchcg -w "10" -h "10" -m 1e-3 -t "Hello World" -s "$(SCALE)" --win-width=800 --win-height=800
-
 touchdisplay: simchcg
 	./simchcg -f -w "200" -h "112" -m "2e-5" -t "$$DISPLAYMSG" -s "$(SCALE)"
 
@@ -78,3 +74,6 @@ slow: simchcg
 valgrind: simchcg
 	valgrind --log-file=valgrind.out.%p --leak-check=full --leak-resolution=high --track-origins=yes \
 	./simchcg -w 100 -h 100 -m 1e-5 --win-width=800 --win-height=800 -t "" --delay 1
+
+startx:
+	startx /etc/gdm/Xsession /home/reed/Projects/simchcg/kiosk.sh -- > kiosk.log 2>&1

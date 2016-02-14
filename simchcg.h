@@ -48,6 +48,8 @@ protected:
     virtual bool on_key_press_event(GdkEventKey* key_event) override;
     bool on_touch_event(GdkEventTouch* touch_event);
 
+    //virtual bool on_event(GdkEvent* event) override;
+
     int device_width_, device_height_;
     int grid_width_, grid_height_;
     double mu_;

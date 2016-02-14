@@ -5,6 +5,7 @@
 #include <glibmm/timer.h>
 #include <iostream>
 #include <cassert>
+#include <array>
 
 Worker::Worker(int width, int height, double mu,int delay) :
   grid_width_{width}, grid_height_{height}, mu_{mu},
@@ -40,14 +41,17 @@ void Worker::do_work(SimCHCG* caller)
     gen_ = 0;
     sleep(delay_);
 
+    std::array<int,num_colors> color_count; 
+    std::vector<int> empty_colors(num_colors);
+
     while(go_) {
         Glib::Threads::RWLock::ReaderLock lock{data_lock_};
-
         //boost::timer::auto_cpu_timer measure_speed(std::cerr,  "do_work: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
+        
         const pop_t &a = *pop_a_.get();
         pop_t &b = *pop_b_.get();
         b = a;
-        int m = static_cast<int>(rand_exp(rand,mu_));
+        color_count.fill(0);
         for(int y=0;y<grid_height_;++y) {
             for(int x=0;x<grid_width_;++x) {
                 int pos = x+y*grid_width_;
@@ -77,23 +81,47 @@ void Worker::do_work(SimCHCG* caller)
                     weight = w;
                     b[pos] = a[pos2];
                 }
-                if(m > 0) {
-                    m -= 1;
-                    continue;
-                }
-                m = static_cast<int>(rand_exp(rand,mu_));
-                static_assert(sizeof(mutation)/sizeof(double) == 128, "number of possible mutations is not 128");
-                uint64_t r = rand.get_uint64();
-                b[pos].fitness *= mutation[r >> 57]; // use top 7 bits for phenotype
-                r &= 0x01FFFFFFFFFFFFFF;
-                // Get the color of the parent
-                uint64_t color = b[pos].color();
-                // Mutate color so that it does not match the parent
-                color = (color + r % (num_alleles-1)) % num_alleles;
-                // Store the allele color in the bottom 8 bits.
-                b[pos].type = (b[pos].type & CELL_FITNESS_MASK) | color;
+                color_count[b[pos].color()] += 1;
             }
         }
+        // Do Mutation
+        int pos  = static_cast<int>(floor(rand_exp(rand,mu_)));
+        if(pos < grid_width_*grid_height_) {
+            // Setup colors since will will have to do at least one mutation
+            empty_colors.clear();
+            for(int color = 0; color < num_alleles; ++color) {
+                if(color_count[color] == 0) 
+                    empty_colors.emplace_back(color);
+            }
+        }
+        while(pos < grid_width_*grid_height_) {
+            // save pos
+            int opos = pos;
+            pos += static_cast<int>(floor(rand_exp(rand,mu_)));
+            if(!b[opos].is_fertile())
+                continue;
+            // mutate
+            uint64_t r = rand.get_uint64();
+            static_assert(sizeof(mutation)/sizeof(double) == 128, "number of possible mutations is not 128");
+            b[opos].fitness *= mutation[r >> 57]; // use top 7 bits for phenotype
+            r &= 0x01FFFFFFFFFFFFFF;
+            uint64_t color;
+            if(empty_colors.empty()) {
+                // Get the color of the parent
+                color = b[opos].color();
+                // Mutate color so that it does not match the parent
+                color = (color + r % (num_alleles-1)) % num_alleles;
+            } else {
+                // retrieve random empty color and erase it
+                int col = r % empty_colors.size();
+                color = empty_colors[col];
+                if(pos < grid_width_*grid_height_)
+                    empty_colors.erase(empty_colors.begin()+col);                
+            }
+            // Store the allele color in the bottom 8 bits.
+            b[opos].type = (b[opos].type & CELL_FITNESS_MASK) | color;            
+        }
+
         // Every so often rescale fitnesses to prevent underflow/overflow
         if((1+gen_) % 10000 == 0) {
             auto it = std::max_element(b.begin(),b.end());
@@ -146,9 +174,8 @@ void Worker::do_clear_nulls() {
 }
 
 bool Worker::is_cell_valid(int x, int y) const {
-    return (0 <= x < grid_width_ && 0 <= y < grid_height_); 
+    return (0 <= x && x < grid_width_ && 0 <= y && y < grid_height_); 
 }
-
 
 void Worker::toggle_cell(int x, int y, bool on) {
     Glib::Threads::Mutex::Lock lock{toggle_mutex_};
