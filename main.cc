@@ -93,6 +93,12 @@ int main(int argc, char** argv) {
     s.name_scale(arg.text_scale);
     win.add(s);
     win.show_all();
+
+    // auto m = win.get_display()->get_device_manager()->get_client_pointer();
+    // for(auto && mm : m->list_slave_devices()) {
+    //     std::cerr << "Device: " << mm->get_name() << " " << mm->get_source() << "\n";
+    // }
+
     int status = app->run(win);
     app->remove_window(win);
     return status;

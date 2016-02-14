@@ -152,6 +152,8 @@ public:
     void do_clear_nulls();
 
     void toggle_cell(int x, int y, bool on);
+    void toggle_line(int x1, int y1, int x2, int y2, bool on);
+    bool is_cell_valid(int x, int y) const;
 
 protected:
     void apply_toggles();
@@ -161,8 +163,8 @@ private:
 
     std::atomic<bool> go_{false};
 
-    int width_;
-    int height_;
+    int grid_width_;
+    int grid_height_;
     double mu_;
     unsigned long long gen_;
     int delay_;

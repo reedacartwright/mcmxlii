@@ -25,12 +25,14 @@ public:
 
 protected:
     bool device_to_cell(int *x, int *y);
+    bool process_iconbar_click(int x, int y);
+
     void create_our_pango_layouts();
 
     void eraser_clicked();
     void clear_clicked();
-    void set_icon_bar_markup(const char *ss);
-    void update_icon_bar_position();
+    void set_iconbar_markup(const char *ss);
+    void update_iconbar_position();
 
     void update_cursor_timeout();
 
@@ -54,11 +56,10 @@ protected:
 
     double cairo_scale_;
 
-    double width_, height_;
+    double draw_width_, draw_height_;
     double east_, north_, west_, south_;
 
-    int lastx_{-1}, lasty_{-1};
-
+ 
     Glib::RefPtr<Gdk::Pixbuf> logo_;
     Glib::RefPtr<Gdk::Cursor> none_cursor_, cell_cursor_;
     sigc::connection cursor_timeout_;
@@ -68,14 +69,22 @@ protected:
 
     Glib::RefPtr<Pango::Layout> layout_name_, layout_note_, layout_icon_;
 
-    Cairo::RefPtr<Cairo::Region> box_icon_;
+    Cairo::RefPtr<Cairo::Region> box_iconbar_;
 
-    bool erasing_{false}, has_nulls_{false};
+    bool erasing_{false}, show_iconbar_{false};
 
     Worker worker_;
     Glib::Threads::Thread* worker_thread_{nullptr};
 
     Glib::Dispatcher draw_dispatcher_;
+
+    typedef GdkEventSequence* gdk_event_sequence_t;
+    typedef std::map<gdk_event_sequence_t,std::pair<int,int>> touch_lastxy_t;  
+
+    std::pair<int,int> pointer_lastxy_{-1,-1};
+    touch_lastxy_t touch_lastxy_;
+
+
 };
 
 #endif

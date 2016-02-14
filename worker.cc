@@ -7,7 +7,7 @@
 #include <cassert>
 
 Worker::Worker(int width, int height, double mu,int delay) :
-  width_{width}, height_{height}, mu_{mu},
+  grid_width_{width}, grid_height_{height}, mu_{mu},
   pop_a_{new pop_t(width*height)},
   pop_b_{new pop_t(width*height)},
   rand{create_random_seed()},
@@ -48,32 +48,32 @@ void Worker::do_work(SimCHCG* caller)
         pop_t &b = *pop_b_.get();
         b = a;
         int m = static_cast<int>(rand_exp(rand,mu_));
-        for(int y=0;y<height_;++y) {
-            for(int x=0;x<width_;++x) {
-                int pos = x+y*width_;
+        for(int y=0;y<grid_height_;++y) {
+            for(int x=0;x<grid_width_;++x) {
+                int pos = x+y*grid_width_;
                 if(a[pos].is_null()) {
                     continue; // cell is null
                 }
 
                 double w;
                 double weight = a[pos].is_fertile() ? rand_exp(rand, a[pos].fitness) : INFINITY;
-                int pos2 = (x-1)+y*width_;
+                int pos2 = (x-1)+y*grid_width_;
                 if(x > 0 && a[pos2].is_fertile() && (w = rand_exp(rand, a[pos2].fitness)) < weight ) {
                     weight = w;
                     b[pos] = a[pos2];
                 }
-                pos2 = x+(y-1)*width_;
+                pos2 = x+(y-1)*grid_width_;
                 if(y > 0 && a[pos2].is_fertile() && (w = rand_exp(rand, a[pos2].fitness)) < weight ) {
                     weight = w;
                     b[pos] = a[pos2];
                 }
-                pos2 = (x+1)+y*width_;
-                if(x < width_-1 && a[pos2].is_fertile() && (w = rand_exp(rand, a[pos2].fitness)) < weight ) {
+                pos2 = (x+1)+y*grid_width_;
+                if(x < grid_width_-1 && a[pos2].is_fertile() && (w = rand_exp(rand, a[pos2].fitness)) < weight ) {
                     weight = w;
                     b[pos] = a[pos2];
                 }
-                pos2 = x+(y+1)*width_;
-                if(y < height_-1 && a[pos2].is_fertile() && (w = rand_exp(rand, a[pos2].fitness)) < weight ) {
+                pos2 = x+(y+1)*grid_width_;
+                if(y < grid_height_-1 && a[pos2].is_fertile() && (w = rand_exp(rand, a[pos2].fitness)) < weight ) {
                     weight = w;
                     b[pos] = a[pos2];
                 }
@@ -145,10 +145,50 @@ void Worker::do_clear_nulls() {
     clear_all_nulls_ = true;
 }
 
+bool Worker::is_cell_valid(int x, int y) const {
+    return (0 <= x < grid_width_ && 0 <= y < grid_height_); 
+}
+
+
 void Worker::toggle_cell(int x, int y, bool on) {
     Glib::Threads::Mutex::Lock lock{toggle_mutex_};
-    assert(0 <= x < width_ && 0 <= y < height_);
-    toggle_map_[{x,y}] = on;
+    if(is_cell_valid(x,y))
+        toggle_map_[{x,y}] = on;
+}
+
+// http://stackoverflow.com/a/4609795
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
+// toggle a line beginning at {x1,y1} and ending at {x2,y2}
+// assumes that {x1,y1} has already been toggled
+void Worker::toggle_line(int x1, int y1, int x2, int y2, bool on) {
+    Glib::Threads::Mutex::Lock lock{toggle_mutex_};
+    int dx = x2 - x1;
+    int dy = y2 - y1;
+    if(dx == 0 && dy == 0) {
+        return;
+    }
+    if(abs(dx) > abs(dy)) {
+        int o = sgn(dx);
+        for(int d=o; d != dx; d += o) {
+            int nx = x1+d;
+            int ny = y1+(d*dy)/dx;
+            if(is_cell_valid(nx,ny))
+                toggle_map_[{nx,ny}] = on;
+        }
+    } else {
+        int o = sgn(dy);
+        for(int d=o; d != dy; d += o) {
+            int ny = y1+d;
+            int nx = x1+(d*dx)/dy;
+            if(is_cell_valid(nx,ny))
+                toggle_map_[{nx,ny}] = on;
+        }
+    }
+    if(is_cell_valid(x2,y2))
+        toggle_map_[{x2,y2}] = on;
 }
 
 const std::pair<int,int> erase_area_[] = {
@@ -165,7 +205,7 @@ void Worker::apply_toggles() {
         for(auto && pos : null_cells_) {
             int x = pos.first;
             int y = pos.second;
-            a[x+y*width_].toggle_off();
+            a[x+y*grid_width_].toggle_off();
         }
         null_cells_.clear();
         clear_all_nulls_ = false;
@@ -174,16 +214,15 @@ void Worker::apply_toggles() {
     for(auto && cell : toggle_map_) {
     	int x = cell.first.first;
     	int y = cell.first.second;
-    	assert(0 <= x && x < width_ && 0 <= y && y < height_);
     	if(cell.second) {
             null_cells_.insert(cell.first);
-    		a[x+y*width_].toggle_on();
+    		a[x+y*grid_width_].toggle_on();
     	} else if(null_cells_.erase(cell.first) > 0) {
-    		a[x+y*width_].toggle_off();
+    		a[x+y*grid_width_].toggle_off();
     	} else {
             for(auto && off : erase_area_) {
                 if(null_cells_.erase({cell.first.first+off.first,cell.first.second+off.second}) > 0) {
-                    a[(x+off.first)+(y+off.second)*width_].toggle_off();
+                    a[(x+off.first)+(y+off.second)*grid_width_].toggle_off();
                     break;
                 }
             }
