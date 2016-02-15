@@ -22,10 +22,12 @@ GFLAGS=$(shell pkg-config --cflags gtkmm-3.0)
 DBUSLIBS=$(shell pkg-config --libs dbus-1)
 DBUSFLAGS=$(shell pkg-config --cflags dbus-1)
 
-all: sim1942 kiosk.sh
+MAIN=mcmxlii
 
-sim1942: main.o sim1942.o worker.o rexp.o
-	$(CXX) $(CXXFLAGS) -o sim1942 main.o sim1942.o worker.o rexp.o $(GLIBS) $(DBUSLIBS) $(LDFLAGS)
+all: $(MAIN) kiosk.sh
+
+$(MAIN): main.o sim1942.o worker.o rexp.o
+	$(CXX) $(CXXFLAGS) -o $(MAIN) main.o sim1942.o worker.o rexp.o $(GLIBS) $(DBUSLIBS) $(LDFLAGS)
 
 main.o: main.cc sim1942.h worker.h xorshift64.h xm.h main.xmh
 	$(CXX) -c $(CXXFLAGS) $(GFLAGS) $(DBUSFLAGS) main.cc
@@ -55,24 +57,25 @@ kiosk.sh: kiosk.sh.in
 	    -e 's/@SCALE@/$(SCALE)/' \
 	    -e 's|@PREFIX@|$(CURDIR)|' \
 	    -e 's/@DISPLAYMSG@/$(SDISPLAYMSG)/' \
+	    -e 's/@MAIN@/$(MAIN)/' \
 	kiosk.sh.in > kiosk.sh && chmod +x kiosk.sh
 
 ############################################################################
 
-run: sim1942
-	./sim1942 -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "" -s "$(SCALE)"
+run: $(MAIN)
+	./$(MAIN) -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "" -s "$(SCALE)"
 
-display: sim1942
-	./sim1942 -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "$$DISPLAYMSG" -s "$(SCALE)"
+display: $(MAIN)
+	./$(MAIN) -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "$$DISPLAYMSG" -s "$(SCALE)"
 
-video: sim1942
-	./sim1942 -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 10 # this one was used for class
-	#./sim1942 -w 348 -h 261 --win-width=1392 --win-height=1044 -t ""
-	#./sim1942 -w 200 -h 150 --win-width=800 --win-height=600 -t "" --delay 5
-	#./sim1942 -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 1
+video: $(MAIN)
+	./$(MAIN) -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 10 # this one was used for class
+	#./$(MAIN) -w 348 -h 261 --win-width=1392 --win-height=1044 -t ""
+	#./$(MAIN) -w 200 -h 150 --win-width=800 --win-height=600 -t "" --delay 5
+	#./$(MAIN) -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 1
 
-window: sim1942
-	./sim1942 -w 200 -h 200 -m 1e-5 --win-width=800 --win-height=800 -t "" --delay 1
+window: $(MAIN)
+	./$(MAIN) -w 200 -h 200 -m 1e-5 --win-width=800 --win-height=800 -t "" --delay 1
 
-startx: sim1942 kiosk.sh
+startx: $(MAIN) kiosk.sh
 	startx /etc/gdm/Xsession $(CURDIR)/kiosk.sh -- > kiosk.log 2>&1

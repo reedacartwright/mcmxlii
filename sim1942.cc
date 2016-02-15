@@ -91,7 +91,7 @@ void Sim1942::on_realize() {
         return;
 
     const uint32_t flags = (1 << 3); // Inhibit idle
-    const char *app = "Sim1942";
+    const char *app = "1942";
     const char *topic = "Fullscreen Mode";
 
     dbus_message_append_args(message,
@@ -192,7 +192,7 @@ bool Sim1942::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 
     int text_x, text_y, text_width, text_height;
     char msg[128];
-    sprintf(msg,"Generation: %llu", data.second);
+    snprintf(msg, 128, "Generation: %'llu", data.second);
     layout_note_->set_text(msg);
     layout_note_->get_pixel_size(text_width,text_height);
     cr->move_to(east_-text_width-0.025*draw_width_,south_-text_height-0.025*draw_height_);

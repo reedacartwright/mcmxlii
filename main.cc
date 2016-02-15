@@ -40,13 +40,16 @@ struct arg_t {
 arg_t process_command_line(po::options_description *opt_desc, int argc, char** argv);
 
 int main(int argc, char** argv) {
-    auto app = Gtk::Application::create(argc, argv, "ht.cartwrig.sim1942",
+    Glib::set_application_name("1942");
+
+    auto app = Gtk::Application::create(argc, argv, "ht.cartwrig.mcmxlii",
    		Gio::APPLICATION_HANDLES_COMMAND_LINE);
     app->signal_command_line().connect(
         [&](const Glib::RefPtr<Gio::ApplicationCommandLine> &) -> int {
             app->activate();
             return 0;
         }, false);
+
 
     po::options_description desc{"Allowed Options"};
     arg_t arg;
@@ -59,6 +62,7 @@ int main(int argc, char** argv) {
 
     Gtk::ApplicationWindow win;
     win.set_title("1942");
+    win.set_icon_name("mcmxlii");
     win.set_default_size(arg.win_width,arg.win_height);
     win.set_border_width(0);
 
@@ -101,6 +105,7 @@ int main(int argc, char** argv) {
 
     int status = app->run(win);
     app->remove_window(win);
+
     return status;
 }
 

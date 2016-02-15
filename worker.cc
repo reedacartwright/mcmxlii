@@ -157,7 +157,7 @@ void Worker::swap_buffers() {
     std::swap(pop_a_,pop_b_);
     apply_toggles();
     char buf[128];
-    std::sprintf(buf, "%0.2fs: Generation %llu done.\n", timer_.elapsed(),gen_);
+    std::snprintf(buf, 128, "%0.2fs: Generation %'llu done.\n", timer_.elapsed(), gen_);
     std::cout << buf;
     std::cout.flush();
 }
