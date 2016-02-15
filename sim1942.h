@@ -1,5 +1,5 @@
-#ifndef CARTWRIGHT_SIMCHCG_H
-#define CARTWRIGHT_SIMCHCG_H
+#ifndef CARTWRIGHT_SIM1942_H
+#define CARTWRIGHT_SIM1942_H
 
 #include <gtkmm/drawingarea.h>
 
@@ -8,11 +8,11 @@
 
 #include <tuple>
 
-class SimCHCG : public Gtk::DrawingArea
+class Sim1942 : public Gtk::DrawingArea
 {
 public:
-    SimCHCG(int width, int height, double mu, int delay);
-    virtual ~SimCHCG();
+    Sim1942(int width, int height, double mu, int delay);
+    virtual ~Sim1942();
 
     void name(const char* n) {
         name_ = n;

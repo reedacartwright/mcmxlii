@@ -9,6 +9,7 @@ Human and Comparative
 Genomics Laboratory
 endef
 export DISPLAYMSG
+SDISPLAYMSG=Human and Comparative\nGenomics Laboratory
 
 ########################
 
@@ -21,18 +22,18 @@ GFLAGS=$(shell pkg-config --cflags gtkmm-3.0)
 DBUSLIBS=$(shell pkg-config --libs dbus-1)
 DBUSFLAGS=$(shell pkg-config --cflags dbus-1)
 
-all: simchcg
+all: sim1942 kiosk.sh
 
-simchcg: main.o simchcg.o worker.o rexp.o
-	$(CXX) $(CXXFLAGS) -o simchcg main.o simchcg.o worker.o rexp.o $(GLIBS) $(DBUSLIBS) $(LDFLAGS)
+sim1942: main.o sim1942.o worker.o rexp.o
+	$(CXX) $(CXXFLAGS) -o sim1942 main.o sim1942.o worker.o rexp.o $(GLIBS) $(DBUSLIBS) $(LDFLAGS)
 
-main.o: main.cc simchcg.h worker.h xorshift64.h xm.h main.xmh
+main.o: main.cc sim1942.h worker.h xorshift64.h xm.h main.xmh
 	$(CXX) -c $(CXXFLAGS) $(GFLAGS) $(DBUSFLAGS) main.cc
 
-simchcg.o: simchcg.cc simchcg.h worker.h xorshift64.h logo.inl
-	$(CXX) -c $(CXXFLAGS) $(GFLAGS) $(DBUSFLAGS) simchcg.cc
+sim1942.o: sim1942.cc sim1942.h worker.h xorshift64.h logo.inl
+	$(CXX) -c $(CXXFLAGS) $(GFLAGS) $(DBUSFLAGS) sim1942.cc
 
-worker.o: worker.cc simchcg.h worker.h xorshift64.h rexp.h
+worker.o: worker.cc sim1942.h worker.h xorshift64.h rexp.h
 	$(CXX) -c $(CXXFLAGS) $(GFLAGS) $(DBUSFLAGS) worker.cc
 
 rexp.o: rexp.cc rexp.h
@@ -45,35 +46,33 @@ logo.png: biodesign_logo_white.pdf
 	convert -density 96 biodesign_logo_white.pdf -resize 25% -trim logo.png
 
 clean:
-	-rm *.o simchcg
+	-rm *.o sim1942 kiosk.sh
 
-run: simchcg
-	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "" -s "$(SCALE)"
+kiosk.sh: kiosk.sh.in
+	sed -e 's/@WIDTH@/$(WIDTH)/' \
+	    -e 's/@HEIGHT@/$(HEIGHT)/' \
+	    -e 's/@MU@/$(MU)/' \
+	    -e 's/@SCALE@/$(SCALE)/' \
+	    -e 's|@PREFIX@|$(CURDIR)|' \
+	    -e 's/@DISPLAYMSG@/$(SDISPLAYMSG)/' \
+	kiosk.sh.in > kiosk.sh && chmod +x kiosk.sh
 
-big: simchcg
-	./simchcg -f -w "18" -h "10" -m 1e-3 -t "" -s "$(SCALE)" --win-width=800 --win-height=800
+############################################################################
 
-display: simchcg
-	./simchcg -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "$$DISPLAYMSG" -s "$(SCALE)"
+run: sim1942
+	./sim1942 -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "" -s "$(SCALE)"
 
-touchdisplay: simchcg
-	./simchcg -f -w "200" -h "112" -m "2e-5" -t "$$DISPLAYMSG" -s "$(SCALE)"
+display: sim1942
+	./sim1942 -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "$$DISPLAYMSG" -s "$(SCALE)"
 
-video: simchcg
-	#./simchcg -w 348 -h 261 --win-width=1392 --win-height=1044 -t ""
-	#./simchcg -w 200 -h 150 --win-width=800 --win-height=600 -t "" --delay 5
-	#./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 10 # this one was used for class
-	./simchcg -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 1
+video: sim1942
+	./sim1942 -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 10 # this one was used for class
+	#./sim1942 -w 348 -h 261 --win-width=1392 --win-height=1044 -t ""
+	#./sim1942 -w 200 -h 150 --win-width=800 --win-height=600 -t "" --delay 5
+	#./sim1942 -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 1
 
-runtest: simchcg
-	./simchcg -w 200 -h 200 -m 1e-5 --win-width=800 --win-height=800 -t "" --delay 1
+window: sim1942
+	./sim1942 -w 200 -h 200 -m 1e-5 --win-width=800 --win-height=800 -t "" --delay 1
 
-slow: simchcg
-	./simchcg -f -w 800 -h 450 -m 1e-5 --win-width=800 --win-height=800 -t "" --delay 1
-
-valgrind: simchcg
-	valgrind --log-file=valgrind.out.%p --leak-check=full --leak-resolution=high --track-origins=yes \
-	./simchcg -w 100 -h 100 -m 1e-5 --win-width=800 --win-height=800 -t "" --delay 1
-
-startx:
-	startx /etc/gdm/Xsession /home/reed/Projects/simchcg/kiosk.sh -- > kiosk.log 2>&1
+startx: sim1942 kiosk.sh
+	startx /etc/gdm/Xsession $(CURDIR)/kiosk.sh -- > kiosk.log 2>&1

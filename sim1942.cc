@@ -9,21 +9,21 @@
 #include <gdk-pixbuf/gdk-pixdata.h>
 #include <dbus/dbus.h>
 
-#include "simchcg.h"
+#include "sim1942.h"
 
 #include "logo.inl"
 
 #define OUR_FRAME_RATE 15
-#define OVERLAY_ALPHA 0.75
+#define OVERLAY_ALPHA 0.85
 
 const char normal_icons[] = u8"\uf12d   \uf26c";
 const char active_eraser_icons[] = u8"<span foreground='#FFF68FE6'>\uf12d</span>   \uf26c";
 
-SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
+Sim1942::Sim1942(int width, int height, double mu, int delay) :
     grid_width_{width}, grid_height_{height}, mu_(mu),
     worker_{width,height,mu,delay}
 {
-    //Glib::signal_timeout().connect(sigc::mem_fun(*this, &SimCHCG::on_timeout), 1000.0/OUR_FRAME_RATE );
+    //Glib::signal_timeout().connect(sigc::mem_fun(*this, &Sim1942::on_timeout), 1000.0/OUR_FRAME_RATE );
 
     Glib::signal_timeout().connect([&]() -> bool {
         this->worker_.do_next_generation(); return true;
@@ -64,13 +64,13 @@ SimCHCG::SimCHCG(int width, int height, double mu, int delay) :
     });
 }
 
-SimCHCG::~SimCHCG()
+Sim1942::~Sim1942()
 {
     worker_.stop();
     worker_thread_->join();
 }
 
-void SimCHCG::on_realize() {
+void Sim1942::on_realize() {
     // https://dxr.mozilla.org/mozilla-central/source/widget/gtk/WakeLockListener.cpp
     Gtk::DrawingArea::on_realize();
     auto p = get_window();
@@ -91,7 +91,7 @@ void SimCHCG::on_realize() {
         return;
 
     const uint32_t flags = (1 << 3); // Inhibit idle
-    const char *app = "SimHCG";
+    const char *app = "Sim1942";
     const char *topic = "Fullscreen Mode";
 
     dbus_message_append_args(message,
@@ -105,11 +105,11 @@ void SimCHCG::on_realize() {
     dbus_connection_unref(connection);
 }
 
-void SimCHCG::on_unrealize() {
+void Sim1942::on_unrealize() {
     Gtk::DrawingArea::on_unrealize();
 }
 
-void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
+void Sim1942::on_size_allocate(Gtk::Allocation& allocation) {
     Gtk::DrawingArea::on_size_allocate(allocation);
 
     device_width_ = allocation.get_width();
@@ -145,12 +145,12 @@ void SimCHCG::on_size_allocate(Gtk::Allocation& allocation) {
     update_iconbar_position();
 }
 
-void SimCHCG::on_screen_changed(const Glib::RefPtr<Gdk::Screen>& previous_screen) {
+void Sim1942::on_screen_changed(const Glib::RefPtr<Gdk::Screen>& previous_screen) {
     Gtk::DrawingArea::on_screen_changed(previous_screen);
-    SimCHCG::create_our_pango_layouts();
+    Sim1942::create_our_pango_layouts();
 }
 
-bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
+bool Sim1942::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 {
     //boost::timer::auto_cpu_timer measure_speed(std::cerr,  "on_draw: " "%ws wall, %us user + %ss system = %ts CPU (%p%)\n");
 
@@ -201,12 +201,12 @@ bool SimCHCG::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     return true;
 }
 
-// bool SimCHCG::on_event(GdkEvent* event) {
+// bool Sim1942::on_event(GdkEvent* event) {
 //     //std::cerr << "    Event " << event->type << "\n";
 //     return false;
 // }
 
-bool SimCHCG::on_key_press_event(GdkEventKey* key_event) {
+bool Sim1942::on_key_press_event(GdkEventKey* key_event) {
     if(key_event->keyval == GDK_KEY_F5 && show_iconbar_) {
         clear_clicked();
         return GDK_EVENT_STOP;
@@ -217,7 +217,7 @@ bool SimCHCG::on_key_press_event(GdkEventKey* key_event) {
     return GDK_EVENT_PROPAGATE;
 }
 
-bool SimCHCG::on_touch_event(GdkEventTouch* touch_event) {
+bool Sim1942::on_touch_event(GdkEventTouch* touch_event) {
     if(!(touch_event->state & GDK_BUTTON1_MASK)) {
         return GDK_EVENT_PROPAGATE;
     }
@@ -260,7 +260,7 @@ bool SimCHCG::on_touch_event(GdkEventTouch* touch_event) {
 	return GDK_EVENT_STOP;
 }
 
-bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
+bool Sim1942::on_button_press_event(GdkEventButton* button_event) {
     update_cursor_timeout();
     if(button_event->button != GDK_BUTTON_PRIMARY) {
         return GDK_EVENT_PROPAGATE;
@@ -279,7 +279,7 @@ bool SimCHCG::on_button_press_event(GdkEventButton* button_event) {
     return GDK_EVENT_STOP;
 }
 
-bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
+bool Sim1942::on_motion_notify_event(GdkEventMotion* motion_event) {
     auto d = gdk_event_get_source_device((GdkEvent*)motion_event);
     if(d != nullptr && gdk_device_get_source(d) == GDK_SOURCE_TOUCHSCREEN) {
         return GDK_EVENT_PROPAGATE;
@@ -296,7 +296,7 @@ bool SimCHCG::on_motion_notify_event(GdkEventMotion* motion_event) {
     return GDK_EVENT_STOP;
 }
 
-bool SimCHCG::process_iconbar_click(int x, int y) {
+bool Sim1942::process_iconbar_click(int x, int y) {
     if(!(show_iconbar_ && box_iconbar_->contains_point(x,y))) {
         return GDK_EVENT_PROPAGATE;
     }
@@ -325,7 +325,7 @@ bool SimCHCG::process_iconbar_click(int x, int y) {
 }
 
 
-void SimCHCG::update_cursor_timeout() {
+void Sim1942::update_cursor_timeout() {
     cursor_timeout_.disconnect();
     get_window()->set_cursor(cell_cursor_);
     cursor_timeout_ = Glib::signal_timeout().connect([&]() -> bool {
@@ -334,7 +334,7 @@ void SimCHCG::update_cursor_timeout() {
     }, 500);
 }
 
-bool SimCHCG::device_to_cell(int *x, int *y) {
+bool Sim1942::device_to_cell(int *x, int *y) {
     bool ret = true;
     if( x != nullptr ) {
         *x = (*x-west_)/cairo_scale_;
@@ -347,7 +347,7 @@ bool SimCHCG::device_to_cell(int *x, int *y) {
     return ret;
 }
 
-void SimCHCG::eraser_clicked() {
+void Sim1942::eraser_clicked() {
     erasing_ = !erasing_;
     if(erasing_) {
         set_iconbar_markup(active_eraser_icons);
@@ -356,7 +356,7 @@ void SimCHCG::eraser_clicked() {
     }
 }
 
-void SimCHCG::clear_clicked() {
+void Sim1942::clear_clicked() {
     if(erasing_) {
         eraser_clicked();
     }
@@ -364,14 +364,14 @@ void SimCHCG::clear_clicked() {
     worker_.do_clear_nulls();
 }
 
-void SimCHCG::set_iconbar_markup(const char *ss) {
+void Sim1942::set_iconbar_markup(const char *ss) {
     assert(ss != nullptr);
     assert(layout_icon_);
     layout_icon_->set_markup(ss);
     update_iconbar_position();
 }
 
-void SimCHCG::update_iconbar_position() {
+void Sim1942::update_iconbar_position() {
     assert(layout_icon_);
 
     int text_width, text_height;
@@ -384,11 +384,11 @@ void SimCHCG::update_iconbar_position() {
         text_width, text_height});
 }
 
-void SimCHCG::notify_queue_draw() {
+void Sim1942::notify_queue_draw() {
     draw_dispatcher_.emit();
 }
 
-void SimCHCG::create_our_pango_layouts() {
+void Sim1942::create_our_pango_layouts() {
     layout_name_ = create_pango_layout(name_.c_str());
     layout_name_->set_font_description(font_name_);
     layout_name_->set_alignment(Pango::ALIGN_CENTER);

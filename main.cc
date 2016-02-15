@@ -1,4 +1,4 @@
-#include "simchcg.h"
+#include "sim1942.h"
 #include <gtkmm/application.h>
 #include <gtkmm/window.h>
 
@@ -40,7 +40,7 @@ struct arg_t {
 arg_t process_command_line(po::options_description *opt_desc, int argc, char** argv);
 
 int main(int argc, char** argv) {
-    auto app = Gtk::Application::create(argc, argv, "ht.cartwrig.simchcg",
+    auto app = Gtk::Application::create(argc, argv, "ht.cartwrig.sim1942",
    		Gio::APPLICATION_HANDLES_COMMAND_LINE);
     app->signal_command_line().connect(
         [&](const Glib::RefPtr<Gio::ApplicationCommandLine> &) -> int {
@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
     }
 
     Gtk::ApplicationWindow win;
-    win.set_title("Human and Comparative Genomics Laboratory");
+    win.set_title("1942");
     win.set_default_size(arg.win_width,arg.win_height);
     win.set_border_width(0);
 
@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    SimCHCG s(arg.width,arg.height,arg.mu,arg.delay);
+    Sim1942 s(arg.width,arg.height,arg.mu,arg.delay);
     s.name(arg.text.c_str());
     s.name_scale(arg.text_scale);
     win.add(s);

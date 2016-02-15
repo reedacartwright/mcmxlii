@@ -1,5 +1,5 @@
 #include "worker.h"
-#include "simchcg.h"
+#include "sim1942.h"
 #include "rexp.h"
 
 #include <glibmm/timer.h>
@@ -33,7 +33,7 @@ const double mutation[128] = {
   1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0
 };
 
-void Worker::do_work(SimCHCG* caller)
+void Worker::do_work(Sim1942* caller)
 {
     static_assert(num_alleles < 256, "Too many colors.");
     go_ = true;

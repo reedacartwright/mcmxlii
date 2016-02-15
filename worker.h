@@ -12,7 +12,7 @@
 
 #include "xorshift64.h"
 
-class SimCHCG;
+class Sim1942;
 
 struct color_rgb {
   double red;
@@ -139,7 +139,7 @@ public:
     Worker(int width, int height, double mu, int delay=0);
 
     // Thread function.
-    void do_work(SimCHCG* caller);
+    void do_work(Sim1942* caller);
 
     std::pair<pop_t,unsigned long long> get_data();
 
