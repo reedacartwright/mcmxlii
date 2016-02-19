@@ -20,6 +20,9 @@ public:
     void name_scale(double n) {
         font_name_.set_size(n*48*PANGO_SCALE);
     }
+    void barriers(const barriers_t &barriers) {
+       worker_.toggle_cells(barriers, true); 
+    }
 
     void notify_queue_draw();
 

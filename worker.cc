@@ -218,6 +218,17 @@ void Worker::toggle_line(int x1, int y1, int x2, int y2, bool on) {
         toggle_map_[{x2,y2}] = on;
 }
 
+void Worker::toggle_cells(const barriers_t & cells, bool on) {
+    Glib::Threads::Mutex::Lock lock{toggle_mutex_};
+    for(auto &&a : cells) {
+        int x = a.first;
+        int y = a.second;
+        if(is_cell_valid(x,y))
+            toggle_map_[{x,y}] = on;
+    }
+}
+
+
 const std::pair<int,int> erase_area_[] = {
     {-1,0},{0,-1},{1,0},{0,1},
     {-1,-1},{1,-1},{1,1},{-1,1}
@@ -232,6 +243,7 @@ void Worker::apply_toggles() {
         for(auto && pos : null_cells_) {
             int x = pos.first;
             int y = pos.second;
+            assert(is_cell_valid(x,y));
             a[x+y*grid_width_].toggle_off();
         }
         null_cells_.clear();
@@ -241,6 +253,7 @@ void Worker::apply_toggles() {
     for(auto && cell : toggle_map_) {
     	int x = cell.first.first;
     	int y = cell.first.second;
+        assert(is_cell_valid(x,y));
     	if(cell.second) {
             null_cells_.insert(cell.first);
     		a[x+y*grid_width_].toggle_on();

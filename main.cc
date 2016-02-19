@@ -6,6 +6,12 @@
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
+#include <boost/spirit/include/qi.hpp>
+#include <boost/fusion/include/std_pair.hpp>
+namespace spirit = boost::spirit;
+namespace qi = boost::spirit::qi;
+
+
 namespace boost { namespace program_options {
 
 template<>
@@ -38,6 +44,8 @@ struct arg_t {
 };
 
 arg_t process_command_line(po::options_description *opt_desc, int argc, char** argv);
+
+barriers_t process_map_file(const std::string& name);
 
 int main(int argc, char** argv) {
     Glib::set_application_name("1942");
@@ -91,17 +99,23 @@ int main(int argc, char** argv) {
         std::cerr << "Invalid command line arguments." << std::endl;
         return 1;
     }
+    barriers_t barriers;
+    if(!arg.map_file.empty()) {
+        barriers = process_map_file(arg.map_file);
+        if(barriers.empty()) {
+            std::cerr << "Unable to process map file." << std::endl;
+            return 2;
+        }
+    }
 
     Sim1942 s(arg.width,arg.height,arg.mu,arg.delay);
     s.name(arg.text.c_str());
     s.name_scale(arg.text_scale);
+    if(!barriers.empty()) {
+        s.barriers(barriers);
+    }
     win.add(s);
     win.show_all();
-
-    // auto m = win.get_display()->get_device_manager()->get_client_pointer();
-    // for(auto && mm : m->list_slave_devices()) {
-    //     std::cerr << "Device: " << mm->get_name() << " " << mm->get_source() << "\n";
-    // }
 
     int status = app->run(win);
     app->remove_window(win);
@@ -129,4 +143,30 @@ arg_t process_command_line(po::options_description *opt_desc, int argc, char** a
     po::notify(vm);
 
     return arg;
+}
+
+barriers_t process_map_file(const std::string& name) {
+    using qi::int_;
+    using qi::lexeme;
+    using qi::lit;
+
+    std::ifstream map_file(name, std::ios::binary);
+    if(!map_file) {
+        // unable to open file, return empty vector
+        return {};
+    }
+    map_file.unsetf(std::ios::skipws);
+
+    spirit::ascii::space_type space;
+    barriers_t map_data;
+    
+    auto b = spirit::istream_iterator(map_file);
+    auto e = spirit::istream_iterator();
+    bool r = qi::phrase_parse(b, e, +(lexeme[int_] >> lit(',') >> int_),
+        space, qi::skip_flag::postskip, map_data);
+    if(!r || b != e) {
+        // parsing failed or was incomplete, return empty vector
+        return {};
+    }
+    return map_data;
 }

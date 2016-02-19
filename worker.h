@@ -132,6 +132,7 @@ union cell {
 };
 
 typedef std::vector<cell> pop_t;
+typedef std::vector<std::pair<int,int>> barriers_t;
 
 class Worker
 {
@@ -153,6 +154,7 @@ public:
 
     void toggle_cell(int x, int y, bool on);
     void toggle_line(int x1, int y1, int x2, int y2, bool on);
+    void toggle_cells(const barriers_t &cells, bool on);
     bool is_cell_valid(int x, int y) const;
 
 protected:

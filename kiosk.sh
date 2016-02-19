@@ -12,4 +12,4 @@ GDK_DPI_SCALE=0.5; export GDK_DPI_SCALE
 DISPLAYMSG="Human and Comparative
 Genomics Laboratory"
 
-"/home/reed/Projects/simchcg/sim1942" -f -w "400" -h "225" -m "4e-6" -s "1.44" -t "${DISPLAYMSG}"
+"/home/reed/Projects/mcmxlii/mcmxlii" -f -w "400" -h "225" -m "4e-6" -s "1.44" -t "${DISPLAYMSG}"
