@@ -13,7 +13,7 @@ high)
   GDK_DPI_SCALE=0.5; export GDK_DPI_SCALE;
 ;;
 *)
-  gsettings set org.gnome.desktop.interface scaling-factor 2;
+  gsettings set org.gnome.desktop.interface scaling-factor 1;
 ;;
 esac
 
