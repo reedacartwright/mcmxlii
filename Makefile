@@ -78,7 +78,7 @@ window: $(MAIN)
 	./$(MAIN) -w 200 -h 200 -m 1e-5 --win-width=800 --win-height=800 -t "" --delay 1
 
 startx: $(MAIN) kiosk.sh
-	startx /etc/gdm/Xsession $(CURDIR)/kiosk.sh -- > kiosk.log 2>&1
+	startx $(CURDIR)/kiosk.sh -- > kiosk.log 2>&1
 
 startx2: $(MAIN) kiosk.sh
-	startx /etc/gdm/Xsession $(CURDIR)/kiosk.sh high -- > kiosk.log 2>&1
+	startx $(CURDIR)/kiosk.sh high -- > kiosk.log 2>&1
