@@ -79,3 +79,6 @@ window: $(MAIN)
 
 startx: $(MAIN) kiosk.sh
 	startx /etc/gdm/Xsession $(CURDIR)/kiosk.sh -- > kiosk.log 2>&1
+
+startx2: $(MAIN) kiosk.sh
+	startx /etc/gdm/Xsession $(CURDIR)/kiosk.sh high -- > kiosk.log 2>&1

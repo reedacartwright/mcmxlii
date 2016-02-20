@@ -1,13 +1,21 @@
 #!/bin/sh
 
+xrandr --auto
 xset -dpms
 xset s off
 openbox-session &
 /usr/lib/gnome-settings-daemon/gnome-settings-daemon &
-gsettings set org.gnome.desktop.interface scaling-factor 2
 
-GDK_SCALE=2; export GDK_SCALE
-GDK_DPI_SCALE=0.5; export GDK_DPI_SCALE
+case "$1" in
+high)
+  gsettings set org.gnome.desktop.interface scaling-factor 2;
+  GDK_SCALE=2; export GDK_SCALE;
+  GDK_DPI_SCALE=0.5; export GDK_DPI_SCALE;
+;;
+*)
+  gsettings set org.gnome.desktop.interface scaling-factor 2;
+;;
+esac
 
 DISPLAYMSG="Human and Comparative
 Genomics Laboratory"
