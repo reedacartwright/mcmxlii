@@ -22,6 +22,7 @@ XM((text)(scale), (s), "scaling factor of message", double, 1.0)
 XM((win)(width), , "starting window width", int, 1920)
 XM((win)(height), , "starting window height", int, 1080)
 XM((delay), , "start after a delay,", int, 0)
+XM((colortest), , "run a color test", bool, false)
 
 /***************************************************************************
  *    cleanup                                                              *

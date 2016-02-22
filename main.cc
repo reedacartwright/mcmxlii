@@ -114,7 +114,40 @@ int main(int argc, char** argv) {
     if(!barriers.empty()) {
         s.barriers(barriers);
     }
-    win.add(s);
+
+    if(arg.colortest) {
+    	s.signal_draw().connect([&](const Cairo::RefPtr<Cairo::Context>& cr) -> bool {
+    		auto rect = s.get_allocation();
+    		double width = rect.get_width();
+    		double height = rect.get_height();
+
+    		cr->set_antialias(Cairo::ANTIALIAS_NONE);
+    		cr->set_source_rgba(0.0,0.0,0.0,1.0);
+    		cr->paint();
+    		double w = width/num_colors/2;
+    		double h = height/num_colors;
+
+    		for(int a=0;a<num_colors;++a) {
+    			cr->set_source_rgba(
+                	col_set[a].red, col_set[a].blue,
+                	col_set[a].green, col_set[a].alpha
+            		);
+            	cr->rectangle(2*w*a,0.0,w,height);
+            	cr->fill();
+                for(int b=0;b<num_colors;++b) {
+                    cr->set_source_rgba(
+                        col_set[b].red, col_set[b].blue,
+                        col_set[b].green, col_set[b].alpha
+                        );
+                    cr->rectangle(w+2*w*a,b*h,w,h);
+                    cr->fill();
+        		}
+            }
+    		return true;
+    	}, false);
+    }
+
+   	win.add(s);
     win.show_all();
 
     int status = app->run(win);
