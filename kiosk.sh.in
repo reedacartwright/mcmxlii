@@ -1,6 +1,6 @@
 #!/bin/sh
 
-xrandr --auto
+xrandr --output HDMI2 --mode 1920x1080 --pos 0x0 --output HDMI3 --mode 1920x1080 --same-as HDMI2
 xset -dpms
 xset s off
 openbox-session &
