@@ -68,6 +68,9 @@ run: $(MAIN)
 display: $(MAIN)
 	./$(MAIN) -f -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "$$DISPLAYMSG" -s "$(SCALE)"
 
+displaymap: $(MAIN)
+	./$(MAIN) -f --map-file "$$MAPFILE" -w "$(WIDTH)" -h "$(HEIGHT)" -m "$(MU)" -t "$$DISPLAYMSG" -s "$(SCALE)"
+
 video: $(MAIN)
 	./$(MAIN) -w 266 -h 200 --win-width=800 --win-height=600 -t "" --delay 10 # this one was used for class
 	#./$(MAIN) -w 348 -h 261 --win-width=1392 --win-height=1044 -t ""
@@ -78,7 +81,7 @@ window: $(MAIN)
 	./$(MAIN) -w 200 -h 200 -m 1e-5 --win-width=800 --win-height=800 -t "" --delay 1
 
 startx: $(MAIN) kiosk.sh
-	startx $(CURDIR)/kiosk.sh -- > kiosk.log
+	startx $(CURDIR)/kiosk.sh --
 
 startx2: $(MAIN) kiosk.sh
-	startx $(CURDIR)/kiosk.sh high -- > kiosk.log
+	startx $(CURDIR)/kiosk.sh high --

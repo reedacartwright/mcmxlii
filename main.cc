@@ -101,6 +101,7 @@ int main(int argc, char** argv) {
     }
     barriers_t barriers;
     if(!arg.map_file.empty()) {
+		std::cout << "Reading map from file \"" << arg.map_file << "\".\n";
         barriers = process_map_file(arg.map_file);
         if(barriers.empty()) {
             std::cerr << "Unable to process map file." << std::endl;
@@ -192,7 +193,7 @@ barriers_t process_map_file(const std::string& name) {
 
     spirit::ascii::space_type space;
     barriers_t map_data;
-    
+
     auto b = spirit::istream_iterator(map_file);
     auto e = spirit::istream_iterator();
     bool r = qi::phrase_parse(b, e, +(lexeme[int_] >> lit(',') >> int_),
